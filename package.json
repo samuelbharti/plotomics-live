@@ -1,0 +1,30 @@
+{
+  "name": "biological-visualizations",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Biological data visualizations, each shown two ways: classic ggplot2 and Shiny React (TSX).",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch"
+  },
+  "dependencies": {
+    "@plotomics/components": "file:../visualization-components/packages/components",
+    "@plotomics/core": "file:../visualization-components/packages/core",
+    "3dmol": "^2.4.0",
+    "graphology": "^0.26.0",
+    "graphology-layout-forceatlas2": "^0.10.1",
+    "igv": "^3.0.0",
+    "react-router-dom": "^6.28.0",
+    "sigma": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^5.4.0"
+  }
+}
