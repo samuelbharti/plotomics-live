@@ -112,6 +112,17 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Stacked violin",
+    what: "Full expression distributions for eight genes across the 11 Visium spatial clusters, one row per gene, each row on its own y range with a median tick.",
+    react: "plotomics violin: densities on canvas, labels and axes as an SVG overlay. The component draws densities but does not estimate them, so bandwidth choice stays with the data.",
+    ggplot: "geom_polygon rebuilt from the same density vectors, faceted by gene with scales = 'free_y'. Calling geom_violin instead would re-estimate with ggplot2's own bandwidth, and the two engines would draw different curves from one dataset.",
+    data: "Same 10x Visium section and clusters as the spot map and the dot plot. Two choices here are worth stating because they change what the figure shows. First, genes are selected by detection rate, not by the fold change the dot plot ranks on: the panel's median gene is detected in 16% of spots, so its density would be 84% a spike at zero and the shape would carry no information. The dot plot is the right tool for those, since it encodes detection as a separate channel. Second, each row gets its own y range: with one shared axis, IGLC2 reaching 7.4 compressed every other gene into a flat line. Clusters remain on one scale within a gene, which is the comparison a marker panel is read for.",
+    refs: [
+      { label: "Hintze & Nelson, Am Stat 52:181–184 (1998) - violin plots", href: "https://doi.org/10.1080/00031305.1998.10480559" },
+      { label: "Wolf et al., Genome Biol 19:15 (2018) - SCANPY", href: "https://doi.org/10.1186/s13059-017-1382-1" },
+    ],
+  },
+  {
     title: "Kaplan-Meier survival",
     what: "Overall survival for 1,067 TCGA breast tumours with usable follow-up, stratified by tumour stage, PAM50 subtype, age band, or whether one of the twelve most-altered drivers is hit. Censoring ticks, a 95% band, medians, the log-rank test and the number-at-risk table.",
     react: "plotomics km: step curves and the confidence band on canvas, axes, risk table and legend as an SVG overlay. Hovering reads off every stratum's estimate at that time.",
@@ -269,7 +280,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across twenty-four common biological visualizations.
+            compare the two approaches across twenty-five common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

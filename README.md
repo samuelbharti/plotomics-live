@@ -1,6 +1,6 @@
 # Plotomics Live — biological visualizations, two ways
 
-A Shiny **React** (TSX) app that shows twenty-four biological-data visualizations, each
+A Shiny **React** (TSX) app that shows twenty-five biological-data visualizations, each
 rendered **two ways** so you can compare them side by side via an engine toggle:
 
 - **Shiny React** — an interactive, GPU-accelerated TSX component (plotomics /
@@ -28,6 +28,7 @@ always visualize the *same* server-side computation.
 | Xenium single-molecule transcripts | plotomics `embedding` (WebGL, 1M mRNA detections streamed as binary blobs) | ggplot2 `geom_point` on a 40k subsample |
 | Driver co-occurrence (UpSet) | plotomics `upset` (canvas bars + membership matrix) | three ggplot2 panels aligned with `patchwork` |
 | Marker gene dot plot | plotomics `dotplot` (canvas dots, area-proportional size + colour) | ggplot2 `geom_point` with `scale_size_area` |
+| Stacked violin | plotomics `violin` (canvas densities, per-feature y ranges) | ggplot2 `geom_polygon` from the same densities, faceted |
 | Kaplan-Meier survival | plotomics `km` (canvas step curves + Greenwood band + risk table) | ggplot2 `geom_line` on expanded steps + `patchwork` risk table |
 | Gene network | plotomics `network` (sigma/WebGL, ~1.5k nodes / 7.4k edges) | igraph layout + ggplot2 |
 | Genome browser (IGV) | igv.js (hg19 + variant track) | ggplot2 variant needle plot |
@@ -110,7 +111,7 @@ image tiles served statically, not a live in-app renderer.
 
 ## Future visualizations (available in sibling projects, easy to add)
 
-PCA/MDS scatter, box/violin group comparison, and enrichment lollipop.
+PCA/MDS scatter and enrichment lollipop.
 
 ## License
 

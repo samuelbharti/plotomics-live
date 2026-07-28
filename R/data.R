@@ -937,6 +937,95 @@ biov_pae <- local({
   }
 })
 
+# ---- stacked violin -------------------------------------------------------
+# The dot plot's two summary numbers per cell, replaced by the whole
+# distribution. A gene detected in half a cluster at high level and silent in
+# the other half has the same mean as one detected weakly everywhere; the dot
+# plot cannot separate them and this can.
+#
+# Densities are estimated here, once, on a grid shared across every violin in a
+# gene. Both engines then draw the same curves: kernel bandwidth is a claim
+# about the data, and two renderers choosing it independently would disagree.
+biov_violin <- local({
+  cache <- new.env(parent = emptyenv())
+  function(n_genes = 8L, grid_n = 64L) {
+    key <- paste(n_genes, grid_n, sep = "|")
+    hit <- cache[[key]]
+    if (!is.null(hit)) return(hit)
+
+    v <- .visium_data()
+    d <- biov_dotplot("gene")
+    m <- matrix(d$value, nrow = d$nGenes, byrow = TRUE,
+                dimnames = list(d$genes, d$clusters))
+    best <- max.col(m, ties.method = "first")
+
+    # Genes are chosen by detection rate here, not by the fold change the dot
+    # plot ranks on, and the difference is not cosmetic. A violin needs a
+    # distribution: the panel's median gene is detected in 16% of spots, so its
+    # density is 84% a spike at zero and the shape carries no information. The
+    # dot plot is the right tool for those, because it encodes detection rate
+    # as a separate channel. Here we keep the genes that are actually measured
+    # across the section, which are also the recognisable ones.
+    det <- rowMeans(v$mat > 0)
+    ok <- names(det)[det >= 0.5]
+    if (!length(ok)) ok <- names(sort(det, decreasing = TRUE))
+    # Order the survivors by the cluster they mark, so the stack still reads
+    # as a marker panel rather than an arbitrary list.
+    ord <- order(best[match(ok, d$genes)], -det[ok])
+    genes <- utils::head(ok[ord], n_genes)
+
+    cl <- factor(v$spots$cluster, levels = v$clusterLevels)
+    clusters <- levels(cl)
+    idx <- lapply(clusters, function(k) which(cl == k))
+
+    # One grid per gene, spanning that gene's own range across all clusters.
+    # A single grid across genes would be "comparable" in principle but
+    # unreadable in practice: one gene reaching 7.4 compresses every other row
+    # into a flat line. Clusters stay comparable within a gene, which is the
+    # comparison a marker panel is actually read for.
+    grids <- list()
+    rows <- list(); dens <- list(); meds <- numeric(0)
+    for (g in genes) {
+      rng <- range(v$mat[g, ])
+      if (!is.finite(rng[1]) || rng[1] == rng[2]) rng <- c(rng[1], rng[1] + 1)
+      grids[[length(grids) + 1]] <- seq(rng[1], rng[2], length.out = grid_n)
+      for (k in seq_along(clusters)) {
+        x <- v$mat[g, idx[[k]]]
+        # A cluster whose spots all read the same value has no density to
+        # estimate; a flat row is the honest rendering, not an error.
+        y <- if (length(unique(x)) < 2L) rep(0, grid_n) else
+          stats::density(x, from = rng[1], to = rng[2], n = grid_n)$y
+        rows[[length(rows) + 1]] <- data.frame(
+          feature = g, cluster = clusters[k], stringsAsFactors = FALSE)
+        dens[[length(dens) + 1]] <- y
+        meds <- c(meds, stats::median(x))
+      }
+    }
+    key_df <- do.call(rbind, rows)
+    grid_m <- do.call(rbind, grids)
+
+    out <- list(
+      feature = key_df$feature, cluster = key_df$cluster,
+      # Row-major, violins x grid_n. The transpose is load-bearing: rbind()
+      # stacks the densities as rows, and as.numeric() on a matrix flattens
+      # column-major, which would interleave every violin with its neighbours.
+      density = as.numeric(t(do.call(rbind, dens))),
+      # The first gene's grid doubles as the shared fallback; grids carries one
+      # row per gene, row-major, same transpose reasoning as density.
+      grid = grid_m[1, ], grids = as.numeric(t(grid_m)), gridN = grid_n,
+      median = unname(meds),
+      genes = genes, clusters = clusters,
+      clusterColors = v$clusterColors,
+      nGenes = length(genes), nClusters = length(clusters),
+      nSpots = nrow(v$spots),
+      spotsPerCluster = unname(as.integer(table(cl))),
+      dataset = v$meta$dataset
+    )
+    cache[[key]] <- out
+    out
+  }
+})
+
 # ---- driver co-occurrence (UpSet) -----------------------------------------
 # The oncoplot shows every sample as its own column, which is where mutual
 # exclusivity is easy to assert and hard to actually read. Collapsing the same
