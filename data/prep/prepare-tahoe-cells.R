@@ -18,8 +18,20 @@ app_dir <- if (length(this_file) && !is.na(this_file))
 out_dir <- file.path(app_dir, "www", "data")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
-obs <- "/Users/samuelbharti/work/projects/tahoe-explorer/data/obs_metadata.parquet"
-if (!file.exists(obs)) stop("Tahoe obs_metadata.parquet not found at ", obs)
+# Same as prepare-tahoe.R: the 2.3 GB parquet lives outside the repo, so the
+# path comes from an argument, then TAHOE_OBS_METADATA, then data/raw/.
+obs <- local({
+  a <- commandArgs(TRUE)
+  if (length(a) && nzchar(a[1])) return(a[1])
+  env <- Sys.getenv("TAHOE_OBS_METADATA")
+  if (nzchar(env)) return(env)
+  file.path(app_dir, "data", "raw", "obs_metadata.parquet")
+})
+if (!file.exists(obs)) {
+  stop("Tahoe obs_metadata.parquet not found at ", obs, "\n",
+       "Pass the path as an argument, set TAHOE_OBS_METADATA, or drop the ",
+       "file in data/raw/.")
+}
 
 N <- 400000L
 con <- dbConnect(duckdb()); on.exit(dbDisconnect(con, shutdown = TRUE))

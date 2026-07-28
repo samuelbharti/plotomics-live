@@ -109,3 +109,8 @@ image tiles served statically, not a live in-app renderer.
 
 PCA/MDS scatter, Kaplan–Meier survival, box/violin group comparison, single-cell
 dotplot, and enrichment lollipop.
+
+## License
+
+The code is MIT (see `LICENSE`). The bundled datasets are not: each keeps the
+license of its source, listed per dataset in `data/prep/PROVENANCE.md`.

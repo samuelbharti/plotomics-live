@@ -16,8 +16,21 @@ this_file <- sub("^--file=", "", commandArgs(FALSE)[grepl("^--file=", commandArg
 app_dir <- if (length(this_file) && !is.na(this_file))
   normalizePath(file.path(dirname(this_file), "..", ".."), mustWork = FALSE) else getwd()
 
-grid <- "/Users/samuelbharti/work/projects/tahoe-explorer/data/obs_cell_grid.parquet"
-if (!file.exists(grid)) stop("Tahoe obs_cell_grid.parquet not found at ", grid)
+# The parquet lives outside this repo (it is far too big to vendor), so the
+# path has to come from the caller. Order: an explicit argument, then
+# TAHOE_CELL_GRID, then data/raw/ where the other prep scripts cache.
+grid <- local({
+  a <- commandArgs(TRUE)
+  if (length(a) && nzchar(a[1])) return(a[1])
+  env <- Sys.getenv("TAHOE_CELL_GRID")
+  if (nzchar(env)) return(env)
+  file.path(app_dir, "data", "raw", "obs_cell_grid.parquet")
+})
+if (!file.exists(grid)) {
+  stop("Tahoe obs_cell_grid.parquet not found at ", grid, "\n",
+       "Pass the path as an argument, set TAHOE_CELL_GRID, or drop the file ",
+       "in data/raw/.")
+}
 
 con <- dbConnect(duckdb())
 on.exit(dbDisconnect(con, shutdown = TRUE))

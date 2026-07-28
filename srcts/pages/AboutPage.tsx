@@ -141,7 +141,7 @@ const ENTRIES: Entry[] = [
     what: "The breast-cancer somatic variants along the genome (hg19), as a live genome browser and as a variant needle/lollipop plot.",
     react: "igv.js embedded as a TSX component (via plotomics igv); the hg19 reference is streamed from igv.js's data servers, with an inline track of the variants.",
     ggplot: "a needle/lollipop plot of variant recurrence vs genomic position (geom_segment + geom_point + labels).",
-    data: "Recurrent BRCA somatic variants (gene, genomic position, protein change, recurrence) sourced from the lifescience-shiny-gallery BRCA mutation dataset (derived from TCGA-BRCA / COSMIC hotspots).",
+    data: "Recurrent BRCA somatic variants (gene, genomic position, protein change, recurrence) sourced from the lifescience-shiny-gallery BRCA mutation dataset, which pulls the TCGA-BRCA PanCancer Atlas study from the public cBioPortal REST API. Nothing here comes from COSMIC.",
     refs: [
       { label: "Robinson et al., Nat Biotechnol 29:24–26 (2011) - Integrative Genomics Viewer", href: "https://doi.org/10.1038/nbt.1754" },
       { label: "igv.js", href: "https://github.com/igvteam/igv.js" },
@@ -153,7 +153,7 @@ const ENTRIES: Entry[] = [
     what: "Expression of the most-variable genes across tumour and normal breast samples, optionally z-scored; the clustered version reorders genes & samples by hierarchical clustering with dendrograms.",
     react: "plotomics heatmap / clustermap (WebGL), LTC colour ramp.",
     ggplot: "geom_tile (heatmap) and base-R heatmap() with dendrograms (clustermap).",
-    data: "TCGA breast-cancer (BRCA) RNA-seq: differential expression + a log2-CPM expression matrix (40 samples), from the lifescience-shiny-gallery de-brca dataset.",
+    data: "TCGA breast-cancer (BRCA) RNA-seq from the lifescience-shiny-gallery de-brca dataset: recount3 counts analysed with DESeq2, tumour vs normal, on a balanced 20 + 20 sample subset. The matrix is DESeq2's variance-stabilizing transform, not log2-CPM.",
     refs: [
       { label: "The Cancer Genome Atlas (TCGA-BRCA)", href: "https://www.cancer.gov/tcga" },
       { label: "recount3 - uniformly processed RNA-seq", href: "https://rna.recount.bio" },
