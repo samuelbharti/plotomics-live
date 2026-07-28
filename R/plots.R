@@ -767,6 +767,93 @@ plot_umap_gg <- function(colour_by = "cell_type") {
   uri
 }
 
+# ---- UpSet: driver co-occurrence -----------------------------------------
+# Three panels sharing one discrete x (the intersections) and one discrete y
+# (the genes), aligned with patchwork. The intersection order and membership
+# come from biov_upset(), so both engines draw the same columns.
+plot_upset_gg <- function(n_genes = 8L, max_n = 20L) {
+  if (!requireNamespace("patchwork", quietly = TRUE)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = "patchwork is required",
+                        colour = "#233038") + ggplot2::theme_void()))
+  }
+  u <- biov_upset(n_genes, max_n)
+  m <- matrix(u$membership, nrow = length(u$size), byrow = TRUE)
+  idx <- factor(seq_along(u$size), levels = seq_along(u$size))
+  # Genes top to bottom in frequency order, so the discrete y is reversed.
+  glev <- rev(u$sets)
+
+  bars <- data.frame(i = idx, size = u$size)
+  p_bars <- ggplot2::ggplot(bars, ggplot2::aes(i, size)) +
+    ggplot2::geom_col(fill = "#233038", width = 0.68) +
+    ggplot2::geom_text(ggplot2::aes(label = size), vjust = -0.35, size = 2.6,
+                       colour = "#6E7B72") +
+    ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.14))) +
+    ggplot2::scale_x_discrete(limits = levels(idx), drop = FALSE) +
+    ggplot2::labs(x = NULL, y = "samples") +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(axis.text.x = ggplot2::element_blank(),
+                   panel.grid.major.x = ggplot2::element_blank())
+
+  dots <- expand.grid(i = idx, gene = factor(u$sets, levels = glev),
+                      KEEP.OUT.ATTRS = FALSE)
+  dots$on <- as.logical(as.integer(m))
+  # Spines connect the first and last filled dot in each column, which is what
+  # makes a three-gene intersection read as one thing.
+  spine <- do.call(rbind, lapply(seq_len(nrow(m)), function(k) {
+    on <- which(m[k, ] == 1L)
+    if (length(on) < 2) return(NULL)
+    data.frame(i = idx[k],
+               lo = factor(u$sets[max(on)], levels = glev),
+               hi = factor(u$sets[min(on)], levels = glev))
+  }))
+
+  # Pin both discrete scales. Otherwise whichever layer ggplot reaches first
+  # seeds them, and adding the spine layer silently reorders the columns so the
+  # matrix stops lining up with the bars above it.
+  p_matrix <- ggplot2::ggplot(dots, ggplot2::aes(i, gene)) +
+    ggplot2::geom_point(ggplot2::aes(colour = on), size = 2.6) +
+    ggplot2::scale_colour_manual(values = c(`TRUE` = "#233038",
+                                            `FALSE` = "#DED5C4"),
+                                 guide = "none") +
+    ggplot2::scale_x_discrete(limits = levels(idx), drop = FALSE) +
+    ggplot2::scale_y_discrete(limits = glev, drop = FALSE) +
+    ggplot2::labs(x = NULL, y = NULL) +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(axis.text.x = ggplot2::element_blank(),
+                   axis.text.y = ggplot2::element_text(size = 9),
+                   panel.grid.major.x = ggplot2::element_blank())
+  if (!is.null(spine)) {
+    p_matrix <- p_matrix +
+      ggplot2::geom_segment(data = spine,
+        ggplot2::aes(x = i, xend = i, y = lo, yend = hi),
+        colour = "#233038", linewidth = 0.7, inherit.aes = FALSE) +
+      ggplot2::geom_point(ggplot2::aes(colour = on), size = 2.6)
+  }
+
+  tot <- data.frame(gene = factor(u$sets, levels = glev), n = u$setSizes)
+  p_sets <- ggplot2::ggplot(tot, ggplot2::aes(n, gene)) +
+    ggplot2::geom_col(fill = "#233038", alpha = 0.55, width = 0.6) +
+    ggplot2::scale_y_discrete(limits = glev, drop = FALSE) +
+    ggplot2::scale_x_reverse() +
+    ggplot2::labs(x = "set size", y = NULL) +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(axis.text.y = ggplot2::element_blank(),
+                   panel.grid.major.y = ggplot2::element_blank(),
+                   axis.text.x = ggplot2::element_text(size = 8))
+
+  # "#" is an empty area, not a slot, so the design takes exactly three plots:
+  # A = intersection bars, B = set totals, C = the membership matrix.
+  pw <- patchwork::wrap_plots(
+    p_bars, p_sets, p_matrix,
+    design = "#A\nBC",
+    widths = c(1, 4.2), heights = c(2.4, 1.6)) +
+    patchwork::plot_annotation(theme = ggplot2::theme(
+      plot.background = ggplot2::element_rect(fill = "transparent",
+                                              colour = NA)))
+  gg_data_uri(pw, width = 960, height = 620)
+}
+
 # ---- marker gene dot plot -------------------------------------------------
 # Gene order, the detection percentages and the scaling all come from
 # biov_dotplot(), so this and the React component plot one computation. Size is

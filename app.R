@@ -41,6 +41,7 @@ server <- function(input, output, session) {
   surv_by <- reactive(if (is.null(input$surv_group)) "stage" else input$surv_group)
   surv_gene <- reactive(if (is.null(input$surv_gene)) "TP53" else input$surv_gene)
   dot_scale <- reactive(if (is.null(input$dot_scale)) "gene" else input$dot_scale)
+  upset_n <- reactive(if (is.null(input$upset_genes)) 8L else as.integer(input$upset_genes))
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
@@ -128,6 +129,27 @@ server <- function(input, output, session) {
   output$umap_png <- reactive_output({
     uri <- plot_umap_gg(colour_by = umap_by())
     list(uri = unclass(uri), n = attr(uri, "n"), secs = attr(uri, "secs"))
+  })
+
+  # ---- UPSET ---------------------------------------------------------------
+  # Intersection selection and ordering happen once in biov_upset(); both
+  # engines draw those columns in that order.
+  output$upset_data <- reactive_output({
+    u <- biov_upset(upset_n())
+    list(
+      columns = list(size = u$size),
+      meta = list(sets = u$sets, setSizes = u$setSizes,
+                  membership = u$membership, total = u$total)
+    )
+  })
+  output$upset_png <- reactive_output({
+    plot_upset_gg(upset_n())
+  })
+  output$upset_stats <- reactive_output({
+    u <- biov_upset(upset_n())
+    list(total = u$total, altered = u$altered, unaltered = u$unaltered,
+         intersections = u$nIntersections, shown = u$shown,
+         pairs = u$pairs)
   })
 
   # ---- MARKER DOT PLOT -----------------------------------------------------

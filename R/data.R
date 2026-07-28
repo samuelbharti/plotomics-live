@@ -937,6 +937,79 @@ biov_pae <- local({
   }
 })
 
+# ---- driver co-occurrence (UpSet) -----------------------------------------
+# The oncoplot shows every sample as its own column, which is where mutual
+# exclusivity is easy to assert and hard to actually read. Collapsing the same
+# alterations into exclusive intersections makes the claim checkable: if two
+# drivers avoid each other, their shared bar is small next to their solo bars.
+#
+# "Exclusive" is load-bearing. A sample sits in exactly one column, the one
+# naming precisely the genes it carries, so the columns sum to the number of
+# altered samples instead of double-counting.
+biov_upset <- local({
+  cache <- new.env(parent = emptyenv())
+  function(n_genes = 8L, max_n = 20L) {
+    key <- paste(n_genes, max_n, sep = "|")
+    hit <- cache[[key]]
+    if (!is.null(hit)) return(hit)
+
+    a <- biov_brca_alterations()
+    freq <- sort(table(a$gene), decreasing = TRUE)
+    genes <- names(freq)[seq_len(min(n_genes, length(freq)))]
+    samples <- sort(unique(a$sample))
+
+    m <- matrix(FALSE, nrow = length(samples), ncol = length(genes),
+                dimnames = list(samples, genes))
+    sub <- a[a$gene %in% genes, , drop = FALSE]
+    m[cbind(sub$sample, sub$gene)] <- TRUE
+
+    keys <- apply(m, 1L, function(r) paste0(as.integer(r), collapse = ""))
+    none <- sum(keys == strrep("0", length(genes)))
+    keys <- keys[keys != strrep("0", length(genes))]
+    tab <- sort(table(keys), decreasing = TRUE)
+    shown <- utils::head(tab, max_n)
+
+    memb <- t(vapply(names(shown), function(k) {
+      as.integer(strsplit(k, "", fixed = TRUE)[[1]]) == 1L
+    }, logical(length(genes))))
+    dimnames(memb) <- NULL
+
+    # Pairwise co-occurrence against independence, for the page's stat bar.
+    # This is the number the figure is really about.
+    pair <- NULL
+    if (length(genes) >= 2) {
+      combos <- utils::combn(seq_along(genes), 2)
+      obs <- apply(combos, 2, function(ij) sum(m[, ij[1]] & m[, ij[2]]))
+      exp <- apply(combos, 2, function(ij)
+        sum(m[, ij[1]]) * sum(m[, ij[2]]) / nrow(m))
+      p <- apply(combos, 2, function(ij)
+        stats::fisher.test(table(factor(m[, ij[1]], c(FALSE, TRUE)),
+                                 factor(m[, ij[2]], c(FALSE, TRUE))))$p.value)
+      ord <- order(p)
+      pair <- list(
+        a = genes[combos[1, ord]], b = genes[combos[2, ord]],
+        observed = unname(obs[ord]), expected = round(unname(exp[ord]), 1),
+        p = signif(unname(p[ord]), 3)
+      )
+    }
+
+    out <- list(
+      size = unname(as.integer(shown)),
+      membership = as.integer(t(memb)),   # row-major, intersections x genes
+      sets = genes,
+      setSizes = unname(as.integer(colSums(m))),
+      total = nrow(m),
+      altered = nrow(m) - none,
+      unaltered = none,
+      nIntersections = length(tab),
+      shown = length(shown),
+      pairs = pair
+    )
+    cache[[key]] <- out
+    out
+  }
+})
+
 # ---- overall survival (Kaplan-Meier) --------------------------------------
 # The same TCGA-BRCA cohort the oncoplot reads, now with its follow-up. All the
 # estimation happens here, once: survival probabilities, Greenwood bands,

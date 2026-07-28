@@ -35,6 +35,9 @@ export const VIZ: CardDef[] = [
   { to: "/oncoplot", key: "oncoplot", title: "Oncoplot (OncoPrint)",
     desc: "The cohort alteration landscape: 25 drivers × 967 real TCGA breast tumours, memo-sorted so mutual exclusivity reads as a staircase.",
     engines: ["react", "ggplot"] },
+  { to: "/upset", key: "upset", title: "Driver co-occurrence (UpSet)",
+    desc: "Which BRCA drivers co-occur and which exclude each other, as exclusive set intersections. TP53 and CDH1 avoid each other at p = 2e-15.",
+    engines: ["react", "ggplot"] },
   { to: "/signatures", key: "signatures", title: "Mutational signatures (SBS96)",
     desc: "The 96 trinucleotide contexts under the six substitution blocks, plus four signatures extracted de novo from 120 real breast tumours. APOBEC falls out on its own.",
     engines: ["react", "ggplot"] },
@@ -88,7 +91,7 @@ export default function Home() {
       <div className="hero">
         <h1><span className="accent">Plotomics</span> Live</h1>
         <p>
-          Plotomics, made interactive. Twenty-three visualizations of real biological datasets,
+          Plotomics, made interactive. Twenty-four visualizations of real biological datasets,
           each rendered two ways - a classic <b>ggplot2</b> image and an interactive
           <b> Shiny&nbsp;React</b> (TSX) component powered by plotomics / WebGL. Pick a
           visualization, then flip the engine toggle to compare. The headline is the
