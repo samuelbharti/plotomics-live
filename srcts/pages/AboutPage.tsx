@@ -89,6 +89,18 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Driver co-occurrence (UpSet)",
+    what: "The eight most-altered breast cancer drivers as exclusive set intersections: each column counts the tumours carrying precisely that combination of genes and no others, with per-gene totals on the left.",
+    react: "plotomics upset: bars, the membership matrix and the connecting spines on canvas, labels and axes as an SVG overlay.",
+    ggplot: "three ggplot2 panels sharing the discrete intersection and gene scales, aligned with patchwork, the set-size panel using scale_x_reverse so its bars grow towards the matrix.",
+    data: "The same cBioPortal TCGA-BRCA alteration table the oncoplot reads, so a tumour called altered here is altered there. Exclusivity is the load-bearing choice: a sample sits in exactly one column, which is why the bars sum to the 886 altered tumours rather than double-counting, and why a small shared bar next to two large solo bars is evidence rather than an artefact. The pairwise numbers in the stat bar are Fisher exact tests against independence, computed server-side alongside the intersections. The results are the known biology: TP53 and CDH1 co-occur in 14 tumours where independence predicts 54 (p = 2e-15), the lobular and basal-like programmes being largely separate, while TP53 and MYC co-occur in 101 against 59 expected. PIK3CA and TP53 are mutually exclusive at p = 3e-06.",
+    refs: [
+      { label: "Lex et al., IEEE Trans Vis Comput Graph 20:1983–1992 (2014) - UpSet", href: "https://doi.org/10.1109/TVCG.2014.2346248" },
+      { label: "Cerami et al., Cancer Discov 2:401–404 (2012) - the cBioPortal", href: "https://doi.org/10.1158/2159-8290.CD-12-0095" },
+      { label: "Ciriello et al., Cell 163:506–519 (2015) - comprehensive molecular portraits of invasive lobular breast cancer", href: "https://doi.org/10.1016/j.cell.2015.09.033" },
+    ],
+  },
+  {
     title: "Marker gene dot plot",
     what: "72 marker genes across the 11 Visium spatial clusters. Dot size is the share of spots in that cluster with any detection, colour is the mean expression, either scaled within each gene or as raw values.",
     react: "plotomics dotplot: dots on canvas, labels, gridlines and both legends as an SVG overlay. Dot area rather than radius is proportional to the percentage, so a 50% dot really is half the ink of a 100% one.",
@@ -257,7 +269,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across twenty-three common biological visualizations.
+            compare the two approaches across twenty-four common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

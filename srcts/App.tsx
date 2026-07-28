@@ -21,6 +21,7 @@ import VisiumPage from "./pages/VisiumPage";
 import XeniumPage from "./pages/XeniumPage";
 import SurvivalPage from "./pages/SurvivalPage";
 import DotplotPage from "./pages/DotplotPage";
+import UpsetPage from "./pages/UpsetPage";
 import ManhattanPage from "./pages/ManhattanPage";
 import EqtlPage from "./pages/EqtlPage";
 import AtacPage from "./pages/AtacPage";
@@ -100,6 +101,7 @@ function Shell() {
         <Route path="/xenium" element={<XeniumPage />} />
         <Route path="/survival" element={<SurvivalPage />} />
         <Route path="/dotplot" element={<DotplotPage />} />
+        <Route path="/upset" element={<UpsetPage />} />
         <Route path="/manhattan" element={<ManhattanPage />} />
         <Route path="/eqtl" element={<EqtlPage />} />
         <Route path="/atac" element={<AtacPage />} />
