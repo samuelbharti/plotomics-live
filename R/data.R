@@ -282,6 +282,35 @@ biov_umap_sample <- local({
   }
 })
 
+# ---- Xenium single-molecule transcripts -----------------------------------
+# The React side streams the binary blobs in www/data straight from HTTP, so
+# the server never sees the full million detections. What it does read is the
+# sidecar, because that is where the level order and the colours live: driving
+# both engines from the one file is what stops them drifting apart.
+biov_xenium_meta <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- jsonlite::fromJSON(
+        .data_path(file.path("..", "www", "data", "xenium_meta.json")),
+        simplifyVector = TRUE)
+    }
+    cache
+  }
+})
+
+# The 40k subsample the ggplot2 side is limited to, mirroring biov_umap_sample.
+biov_xenium_sample <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("xenium_ggplot_sample.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
 # ---- GWAS summary statistics (Manhattan + QQ) -----------------------------
 # Simulated genome-wide association results: SNPs across 22 chromosomes with a
 # handful of genuine association peaks. Seeded so both engines see identical

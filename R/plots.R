@@ -766,3 +766,41 @@ plot_umap_gg <- function(colour_by = "cell_type") {
   attr(uri, "secs") <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 2)
   uri
 }
+
+# ---- Xenium single-molecule map (same subsample contrast as the UMAP page) --
+# Levels and colours come from www/data/xenium_meta.json, the same sidecar the
+# React client reads, so the legend order and the palette cannot drift between
+# the two engines.
+plot_xenium_gg <- function(colour_by = "class") {
+  df <- biov_xenium_sample()
+  meta <- biov_xenium_meta()
+  fld <- meta$fields[[colour_by]]
+  if (is.null(fld)) {
+    colour_by <- "class"
+    fld <- meta$fields[["class"]]
+  }
+  df$grp <- factor(df[[colour_by]], levels = fld$levels)
+  n <- nrow(df)
+  t0 <- Sys.time()
+  # Tissue coordinates are in micrometres and the section is not square, so the
+  # aspect ratio has to be fixed or the anatomy is a lie. y is flipped to match
+  # the image convention the instrument writes.
+  p1 <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, colour = grp)) +
+    ggplot2::geom_point(size = 0.3, alpha = 0.55) +
+    ggplot2::scale_colour_manual(values = stats::setNames(fld$colors, fld$levels),
+                                 drop = FALSE, name = NULL) +
+    ggplot2::scale_y_reverse() +
+    ggplot2::coord_fixed() +
+    ggplot2::guides(colour = ggplot2::guide_legend(
+      override.aes = list(size = 2.4, alpha = 1))) +
+    ggplot2::labs(x = expression(x ~ (mu * m)), y = expression(y ~ (mu * m))) +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(legend.position = "right",
+                   legend.text = ggplot2::element_text(size = 8))
+  # coord_fixed on a 1.37:1 section, so the frame is sized to match rather than
+  # leaving a band of empty panel above and below the tissue.
+  uri <- gg_data_uri(p1, width = 960, height = 620)
+  attr(uri, "n") <- n
+  attr(uri, "secs") <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 2)
+  uri
+}

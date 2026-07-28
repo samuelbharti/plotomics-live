@@ -18,6 +18,7 @@ import OncoplotPage from "./pages/OncoplotPage";
 import LollipopPage from "./pages/LollipopPage";
 import SignaturesPage from "./pages/SignaturesPage";
 import VisiumPage from "./pages/VisiumPage";
+import XeniumPage from "./pages/XeniumPage";
 import ManhattanPage from "./pages/ManhattanPage";
 import EqtlPage from "./pages/EqtlPage";
 import AtacPage from "./pages/AtacPage";
@@ -94,6 +95,7 @@ function Shell() {
         <Route path="/lollipop" element={<LollipopPage />} />
         <Route path="/signatures" element={<SignaturesPage />} />
         <Route path="/visium" element={<VisiumPage />} />
+        <Route path="/xenium" element={<XeniumPage />} />
         <Route path="/manhattan" element={<ManhattanPage />} />
         <Route path="/eqtl" element={<EqtlPage />} />
         <Route path="/atac" element={<AtacPage />} />

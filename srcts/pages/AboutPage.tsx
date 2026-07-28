@@ -89,6 +89,17 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Xenium single-molecule transcripts",
+    what: "One million individual mRNA detections at their micrometre coordinates in a human breast cancer section, drawn from the 42.6 million the run reported. Colour by curated marker class, by the twelve most abundant genes, or by whether the molecule fell inside a nucleus.",
+    react: "plotomics embedding, the same WebGL scatter the UMAP page uses, here on real tissue coordinates rather than an abstract embedding. Coordinates and category codes are fetched as binary blobs over plain HTTP, never over the websocket. The category order and palette are passed explicitly so a class keeps its colour when you switch fields.",
+    ggplot: "geom_point on a 40,000-row subsample with coord_fixed and scale_y_reverse, reading its levels and colours from the same sidecar the browser reads. The subsample is the honest limit of the static engine, and the stat bar names it.",
+    data: "10x Genomics public dataset, Xenium In Situ, Human Breast Cancer Rep 1 (Xenium Analyzer 1.0.1, 313-gene breast panel), CC BY 4.0. Detections are filtered to the vendor-recommended QV 20 and to real genes, dropping the 228 negative-control, blank, antisense and unused-codeword features, which leaves 34.4M of the 42.6M. The million shown are a seeded Bernoulli sample of those, shuffled so no class is systematically drawn over another. Coordinates are quantized to Int16 over the section bounds, a 0.11 um step that is finer than the instrument localizes a molecule to. Marker classes are our curation of the panel, and deliberately leave broadly expressed genes in Other rather than forcing them into a lineage.",
+    refs: [
+      { label: "10x Genomics - Xenium human breast cancer (FFPE, add-on panel)", href: "https://www.10xgenomics.com/datasets/ffpe-human-breast-with-custom-add-on-panel-1-standard" },
+      { label: "Janesick et al., Nat Commun 14:8353 (2023) - high resolution mapping of the breast tumour microenvironment", href: "https://doi.org/10.1038/s41467-023-43458-x" },
+    ],
+  },
+  {
     title: "Mutational signatures (SBS96)",
     what: "The 96 trinucleotide contexts under the six substitution blocks. The observed catalogue is 21,330 SNVs across 120 TCGA breast tumours; the four profiles below it were extracted de novo from those spectra by NMF. Two come out as the C>T and C>G arms of APOBEC and one as clock-like CpG deamination, recovered from the data rather than matched to a catalogue.",
     react: "plotomics profile: 96 canvas bars under a six-block banner, with the group colours that every published signature figure uses.",
@@ -223,7 +234,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across twenty common biological visualizations.
+            compare the two approaches across twenty-one common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

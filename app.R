@@ -37,6 +37,7 @@ server <- function(input, output, session) {
   sbs_which <- reactive(if (is.null(input$sbs_profile)) "catalogue" else input$sbs_profile)
   vis_gene <- reactive(if (is.null(input$visium_gene)) "ERBB2" else input$visium_gene)
   vis_by <- reactive(if (is.null(input$visium_by)) "cluster" else input$visium_by)
+  xen_by <- reactive(if (is.null(input$xenium_color)) "class" else input$xenium_color)
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
@@ -123,6 +124,14 @@ server <- function(input, output, session) {
   # only renders the (deliberately capped) ggplot2 counterpart.
   output$umap_png <- reactive_output({
     uri <- plot_umap_gg(colour_by = umap_by())
+    list(uri = unclass(uri), n = attr(uri, "n"), secs = attr(uri, "secs"))
+  })
+
+  # ---- XENIUM --------------------------------------------------------------
+  # Same split as the UMAP page: the React side streams the blobs itself, the
+  # server only renders the capped ggplot2 counterpart.
+  output$xenium_png <- reactive_output({
+    uri <- plot_xenium_gg(colour_by = xen_by())
     list(uri = unclass(uri), n = attr(uri, "n"), secs = attr(uri, "secs"))
   })
 
