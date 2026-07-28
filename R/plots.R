@@ -289,6 +289,107 @@ plot_protein_plddt_gg <- function(uniprot = "P04637", residue = NULL) {
   gg_data_uri(p1, width = 900, height = 560)
 }
 
+# ---- oncoplot / OncoPrint -------------------------------------------------
+# Five aligned panels: the alteration grid, a per-sample burden barplot above,
+# a per-gene frequency barplot to the right, and two clinical strips below.
+# patchwork is used for exactly one reason: it merges gtable widths per column
+# and heights per row, so the burden bars land above their own sample columns
+# without us needing to know how wide the gene-label axis happened to render.
+# Nothing here re-derives the ordering; it plots biov_oncoplot()'s order, which
+# is the same order the React engine gets.
+plot_oncoplot_gg <- function(n_genes = 25L) {
+  if (!requireNamespace("patchwork", quietly = TRUE)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = "patchwork is required",
+                        colour = "#233038") + ggplot2::theme_void()))
+  }
+  o <- biov_oncoplot(n_genes = n_genes)
+  # Top gene at the top of the panel, so reverse for the discrete y scale.
+  glev <- rev(o$genes)
+  cls <- as.character(o$classes)
+  long <- data.frame(
+    gene = factor(rep(o$genes, times = o$ncols), levels = glev),
+    sample = factor(rep(o$samples, each = o$nrows), levels = o$samples),
+    code = as.integer(o$matrix))
+  long$cls <- factor(ifelse(long$code == 0L, NA_character_,
+                            cls[pmax(long$code, 1L)]), levels = cls)
+  cls_cols <- stats::setNames(as.character(o$classColors), cls)
+
+  bare_x <- ggplot2::theme(
+    axis.text.x = ggplot2::element_blank(),
+    axis.ticks.x = ggplot2::element_blank(),
+    panel.grid = ggplot2::element_blank())
+
+  p_main <- ggplot2::ggplot(long, ggplot2::aes(sample, gene)) +
+    ggplot2::geom_tile(fill = "#EFE9DC", width = 0.94, height = 0.82) +
+    ggplot2::geom_tile(data = long[!is.na(long$cls), ],
+                       ggplot2::aes(fill = cls), width = 0.94, height = 0.82) +
+    ggplot2::scale_fill_manual(values = cls_cols, drop = FALSE, name = NULL,
+                               na.translate = FALSE) +
+    ggplot2::labs(x = NULL, y = NULL) +
+    biov_theme(base_size = 10) + bare_x +
+    ggplot2::theme(axis.text.y = ggplot2::element_text(size = 7,
+                                                       face = "italic"))
+
+  p_tmb <- ggplot2::ggplot(
+      data.frame(sample = factor(o$samples, levels = o$samples), v = o$tmb),
+      ggplot2::aes(sample, v)) +
+    ggplot2::geom_col(fill = "#0E7175", width = 0.94) +
+    ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.05))) +
+    ggplot2::labs(x = NULL, y = "alterations") +
+    biov_theme(base_size = 9) + bare_x
+
+  p_freq <- ggplot2::ggplot(
+      data.frame(gene = factor(o$genes, levels = glev), v = o$freq),
+      ggplot2::aes(v, gene)) +
+    ggplot2::geom_col(fill = "#ED773C", width = 0.82) +
+    ggplot2::geom_text(ggplot2::aes(label = sprintf("%.0f%%", v)),
+                       hjust = -0.15, size = 2.4, colour = "#233038") +
+    ggplot2::scale_x_continuous(
+      expand = ggplot2::expansion(mult = c(0, 0.28))) +
+    ggplot2::labs(x = "% altered", y = NULL) +
+    biov_theme(base_size = 9) +
+    ggplot2::theme(axis.text.y = ggplot2::element_blank(),
+                   panel.grid = ggplot2::element_blank())
+
+  strip <- function(a) {
+    d <- data.frame(
+      sample = factor(o$samples, levels = o$samples),
+      lv = factor(ifelse(a$codes < 0L, NA_character_,
+                         as.character(a$levels)[a$codes + 1L]),
+                  levels = as.character(a$levels)),
+      row = a$name)
+    ggplot2::ggplot(d, ggplot2::aes(sample, row, fill = lv)) +
+      ggplot2::geom_tile(width = 0.94) +
+      ggplot2::scale_fill_manual(
+        values = stats::setNames(as.character(a$colors),
+                                 as.character(a$levels)),
+        name = a$name, na.value = "#EFE9DC") +
+      ggplot2::labs(x = NULL, y = NULL) +
+      biov_theme(base_size = 9) + bare_x +
+      ggplot2::theme(axis.text.y = ggplot2::element_text(size = 7))
+  }
+  strips <- lapply(o$annotations, strip)
+
+  # A = burden, B = grid, C = frequency, D/E = clinical strips. The "#" cells
+  # keep the right-hand column empty on every row except the grid's.
+  pw <- p_tmb + p_main + p_freq + strips[[1]] + strips[[2]] +
+    patchwork::plot_layout(
+      design = "A#\nBC\nD#\nE#",
+      widths = c(5.2, 1), heights = c(1.15, 6.4, 0.32, 0.32),
+      guides = "collect") +
+    # Without this patchwork paints an opaque background and the PNG stops
+    # blending into the panel the way every other classic view does.
+    patchwork::plot_annotation(theme = ggplot2::theme(
+      plot.background = ggplot2::element_rect(fill = "transparent",
+                                              colour = NA))) &
+    ggplot2::theme(legend.position = "bottom",
+                   legend.key.size = ggplot2::unit(9, "pt"),
+                   legend.text = ggplot2::element_text(size = 7),
+                   legend.title = ggplot2::element_text(size = 7))
+  gg_data_uri(pw, width = 1020, height = 780)
+}
+
 # ---- AlphaFold predicted aligned error (PAE) ------------------------------
 # Same binned matrix the React engine gets, on the same LTC ramp with the same
 # limits, so the two renderings are the same picture in two engines.

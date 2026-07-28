@@ -32,6 +32,7 @@ server <- function(input, output, session) {
   igv_gene <- reactive(if (is.null(input$igv_gene)) "TP53" else input$igv_gene)
   prot_acc <- reactive(if (is.null(input$protein_uniprot)) "P04637" else input$protein_uniprot)
   prot_res <- reactive(input$protein_residue)
+  onco_n <- reactive(if (is.null(input$onco_genes)) 25L else as.integer(input$onco_genes))
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
@@ -194,6 +195,29 @@ server <- function(input, output, session) {
   # ---- PROTEIN (classic pLDDT profile; React side is 3Dmol) ----------------
   output$protein_plddt_png <- reactive_output({
     plot_protein_plddt_gg(prot_acc(), prot_res())
+  })
+
+  # ---- ONCOPLOT ------------------------------------------------------------
+  # The memo sort, per-sample burden and per-gene frequency are all computed in
+  # biov_oncoplot() and shipped as-is. The React component is a renderer: it
+  # indexes, it does not sort or aggregate, so the two engines cannot drift
+  # apart on a tie.
+  output$oncoplot_data <- reactive_output({
+    o <- biov_oncoplot(n_genes = onco_n())
+    list(
+      columns = list(codes = o$codes, tmb = o$tmb, freq = o$freq),
+      meta = list(nrows = o$nrows, ncols = o$ncols,
+                  genes = o$genes, samples = o$samples,
+                  classes = o$classes, classColors = o$classColors,
+                  annotations = o$annotations)
+    )
+  })
+  output$oncoplot_png <- reactive_output({ plot_oncoplot_gg(n_genes = onco_n()) })
+  output$oncoplot_stats <- reactive_output({
+    o <- biov_oncoplot(n_genes = onco_n())
+    list(genes = o$nrows, samples = o$ncols, cohort = o$cohort,
+         altered = o$altered, events = sum(o$tmb),
+         medianTmb = stats::median(o$tmb))
   })
 
   # ---- ALPHAFOLD PAE -------------------------------------------------------

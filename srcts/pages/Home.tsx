@@ -20,6 +20,9 @@ export const VIZ: CardDef[] = [
   { to: "/ndarray", key: "ndarray", title: "N-dimensional array",
     desc: "A hyperspectral image cube (100×100×24) - the large multi-dimensional array format used in microscopy and geoscience. Re-slice any channel instantly on the GPU.",
     engines: ["react", "ggplot"] },
+  { to: "/oncoplot", key: "oncoplot", title: "Oncoplot (OncoPrint)",
+    desc: "The cohort alteration landscape: 25 drivers × 967 real TCGA breast tumours, memo-sorted so mutual exclusivity reads as a staircase.",
+    engines: ["react", "ggplot"] },
   { to: "/network", key: "network", title: "Gene network",
     desc: "A large modular gene network (~1,500 nodes, ~7,400 edges). WebGL/sigma stays interactive; ggplot2 renders it statically.",
     engines: ["react", "ggplot"] },
@@ -67,7 +70,7 @@ export default function Home() {
       <div className="hero">
         <h1><span className="accent">Plotomics</span> Live</h1>
         <p>
-          Plotomics, made interactive. Sixteen visualizations of real biological datasets,
+          Plotomics, made interactive. Seventeen visualizations of real biological datasets,
           each rendered two ways - a classic <b>ggplot2</b> image and an interactive
           <b> Shiny&nbsp;React</b> (TSX) component powered by plotomics / WebGL. Pick a
           visualization, then flip the engine toggle to compare. The headline is the

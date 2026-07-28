@@ -65,6 +65,19 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Oncoplot (OncoPrint)",
+    what: "The alteration landscape of the TCGA breast cancer cohort: the recurrently altered drivers across 967 tumours, with per-sample burden above, per-gene frequency to the right, and subtype and stage annotating the samples below.",
+    react: "plotomics oncoplot: the grid, marginal barplots and annotation strips are drawn on one canvas (25 × 967 is over 24,000 cells), with labels and legend as an SVG overlay.",
+    ggplot: "five aligned ggplot2 panels composed with patchwork: geom_tile for the grid and the clinical strips, geom_col for the two marginal barplots.",
+    data: "cBioPortal REST API, study brca_tcga_pan_can_atlas_2018 (Breast Invasive Carcinoma, TCGA PanCancer Atlas, hg19). Somatic mutations collapsed to the standard alteration classes, plus GISTIC deep deletions and amplifications; a sample carrying two classes in one gene is called multi-hit. Gene and sample ordering (the cBioPortal memo sort) is computed server-side and shipped to both engines, so neither can tie-break differently. Observed frequencies match the literature: PIK3CA 38% and TP53 37%.",
+    refs: [
+      { label: "Cerami et al., Cancer Discov 2:401–404 (2012) - the cBioPortal", href: "https://doi.org/10.1158/2159-8290.CD-12-0095" },
+      { label: "Gao et al., Sci Signal 6:pl1 (2013) - integrative analysis with cBioPortal", href: "https://doi.org/10.1126/scisignal.2004088" },
+      { label: "TCGA Network, Nature 490:61–70 (2012) - molecular portraits of human breast tumours", href: "https://doi.org/10.1038/nature11412" },
+      { label: "Hoadley et al., Cell 173:291–304 (2018) - the PanCancer Atlas", href: "https://doi.org/10.1016/j.cell.2018.03.022" },
+    ],
+  },
+  {
     title: "AlphaFold PAE matrix",
     what: "The predicted aligned error matrix for the same BRCA driver proteins: entry (x, y) is the expected position error at residue x when the prediction is superposed on residue y. Dark diagonal blocks are confidently-folded domains; a bright block between two dark ones means both domains are individually confident but their relative orientation is not.",
     react: "plotomics heatmap (WebGL) on the residue × residue matrix, plus a canvas profile of a single row.",
@@ -174,7 +187,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across sixteen common biological visualizations.
+            compare the two approaches across seventeen common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

@@ -423,6 +423,106 @@ biov_eqtl <- local({
   }
 })
 
+# ---- oncoplot / OncoPrint (cohort alteration landscape) -------------------
+# Real TCGA-BRCA per-sample alterations from cBioPortal (see
+# data/prep/prepare-brca-cohort.R): somatic mutations plus GISTIC deep
+# deletions and amplifications, collapsed to one class per gene x sample, with
+# clinical annotation and overall survival alongside.
+biov_brca_alterations <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("brca_oncoplot.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+biov_brca_clinical <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("brca_clinical.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+# cBioPortal's memoSort: genes by descending alteration frequency, then samples
+# ordered so the top gene's carriers come first, ties broken by the next gene
+# down. That ordering is what makes mutual exclusivity between drivers read as
+# a staircase. It is computed HERE, once, and shipped to both engines, because
+# two implementations tie-breaking differently would silently disagree.
+.memo_sort <- function(hit) {
+  g <- order(rowSums(hit), decreasing = TRUE)
+  hit <- hit[g, , drop = FALSE]
+  keys <- lapply(seq_len(nrow(hit)), function(i) -as.integer(hit[i, ]))
+  list(genes = g, samples = do.call(order, c(keys, list(method = "radix"))))
+}
+
+biov_oncoplot <- local({
+  cache <- new.env(parent = emptyenv())
+  function(n_genes = 25L) {
+    key <- as.character(n_genes)
+    hit0 <- cache[[key]]
+    if (!is.null(hit0)) return(hit0)
+
+    alt <- biov_brca_alterations()
+    classes <- names(biov_variant_colours())
+    classes <- classes[classes %in% unique(alt$class)]
+
+    # Keep the n most recurrently altered genes.
+    gene_freq <- sort(table(alt$gene), decreasing = TRUE)
+    genes <- names(gene_freq)[seq_len(min(n_genes, length(gene_freq)))]
+    alt <- alt[alt$gene %in% genes, , drop = FALSE]
+    samples <- sort(unique(alt$sample))
+
+    gi <- match(alt$gene, genes)
+    si <- match(alt$sample, samples)
+    ci <- match(alt$class, classes)
+    m <- matrix(0L, length(genes), length(samples),
+                dimnames = list(genes, samples))
+    m[cbind(gi, si)] <- ci
+
+    ord <- .memo_sort(m > 0L)
+    m <- m[ord$genes, ord$samples, drop = FALSE]
+    genes <- rownames(m)
+    samples <- colnames(m)
+
+    clin <- biov_brca_clinical()
+    ci_row <- match(samples, clin$sample)
+    ann <- function(name, values, palette) {
+      f <- factor(values)
+      list(name = name, levels = I(levels(f)),
+           codes = ifelse(is.na(f), -1L, as.integer(f) - 1L),
+           colors = I(unname(palette(nlevels(f)))))
+    }
+
+    out <- list(
+      matrix = m,
+      codes = as.integer(t(m)),          # row-major, 0 = no alteration
+      genes = genes, samples = samples,
+      nrows = nrow(m), ncols = ncol(m),
+      classes = I(classes),
+      classColors = I(unname(biov_variant_colours()[classes])),
+      tmb = as.integer(colSums(m > 0L)),
+      # unname() is load-bearing: rowSums() keeps the gene names, and Shiny
+      # serializes a named vector as a JSON object rather than an array, which
+      # the component would read as an empty column.
+      freq = unname(round(100 * rowSums(m > 0L) / ncol(m), 1)),
+      annotations = list(
+        ann("Subtype", clin$subtype[ci_row], biov_categorical),
+        ann("Stage", clin$stage[ci_row],
+            function(k) biov_gradient()[round(seq(2, 6, length.out = k))])),
+      altered = sum(colSums(m > 0L) > 0L),
+      cohort = nrow(clin))
+    cache[[key]] <- out
+    out
+  }
+})
+
 # ---- AlphaFold predicted aligned error (PAE) ------------------------------
 # The other half of an AlphaFold prediction. Entry (x, y) is the expected
 # position error at residue x when the prediction is superposed on residue y.

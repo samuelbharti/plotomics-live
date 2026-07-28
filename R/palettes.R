@@ -15,6 +15,21 @@ biov_status_colours <- function() {
   c(Down = "#0E7175", NS = "#C9C1B1", Up = "#C63F3E")
 }
 
+# Alteration classes for the oncoplot, mapped onto LTC hues. Order matters: it
+# fixes both the legend order and which colour each class gets, and it is the
+# same order the React side receives, so the two engines agree.
+biov_variant_colours <- function() {
+  c("Missense"       = "#0E7175",
+    "Truncating"     = "#233038",
+    "Frameshift"     = "#C63F3E",
+    "Splice"         = "#ED773C",
+    "In-frame indel" = "#E4A25B",
+    "Amplification"  = "#9E3F71",
+    "Deep deletion"  = "#808BC5",
+    "Multi-hit"      = "#245E55",
+    "Other"          = "#9BB29E")
+}
+
 # Sequential gradient for the heatmap - LTC "heatmap0" (earthy viridis-like).
 biov_gradient <- function() {
   c("#013D5A", "#0A9396", "#94D2BD", "#E9D8A6", "#EE9B00", "#CA6702", "#AE2012")
