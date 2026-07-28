@@ -1250,3 +1250,93 @@ biov_survival <- local({
   if (p < 0.001) return("log-rank p < 0.001")
   sprintf("log-rank p = %s", format(round(p, 3), nsmall = 3))
 }
+
+# ---- PCA explorer ---------------------------------------------------------
+# One decomposition, three views. The scores, the scree bars and the loadings
+# all read from this single fit, so the panels cannot disagree about which
+# component is which or how much variance it carries.
+#
+# Genes are centred but not scaled. The values are VST-transformed counts,
+# already variance-stabilised, and scaling to unit variance would hand a
+# low-expression gene the same say as a strong marker.
+biov_pca <- local({
+  cache <- NULL
+  function(n_genes = 2000L) {
+    key <- as.integer(n_genes)
+    if (!is.null(cache) && identical(cache$n_genes, key)) return(cache)
+    m <- biov_expression()
+    md <- biov_metadata()
+    v <- apply(m, 1, stats::var)
+    top <- utils::head(order(v, decreasing = TRUE), key)
+    sub <- m[top, , drop = FALSE]
+    # prcomp wants samples in rows, so the matrix is transposed here and the
+    # loadings come back gene-wise in `rotation`.
+    p <- stats::prcomp(t(sub), center = TRUE, scale. = FALSE)
+    ve <- p$sdev^2 / sum(p$sdev^2)
+    # Centring 40 samples leaves 39 real components; the rest are numerical
+    # dust and would draw as spurious zero-height bars.
+    keep <- seq_len(min(ncol(p$x), nrow(p$x) - 1L))
+    cache <<- list(
+      n_genes = key,
+      scores = p$x[, keep, drop = FALSE],
+      loadings = p$rotation[, keep, drop = FALSE],
+      var_exp = ve[keep],
+      samples = rownames(p$x),
+      groups = md$group[match(rownames(p$x), md$sample)],
+      genes = rownames(sub),
+      npc = length(keep)
+    )
+    cache
+  }
+})
+
+# Sample scores on a chosen pair of components, in the embedding contract.
+biov_pca_scores <- function(pc_x = 1L, pc_y = 2L) {
+  p <- biov_pca()
+  i <- max(1L, min(as.integer(pc_x), p$npc))
+  j <- max(1L, min(as.integer(pc_y), p$npc))
+  list(
+    x = unname(p$scores[, i]), y = unname(p$scores[, j]),
+    color = p$groups, label = p$samples,
+    pcX = i, pcY = j,
+    xLabel = sprintf("PC%d (%.1f%%)", i, 100 * p$var_exp[i]),
+    yLabel = sprintf("PC%d (%.1f%%)", j, 100 * p$var_exp[j])
+  )
+}
+
+# Variance explained per component, in the profile contract. No grouping: a
+# scree plot has one series and a header band would only add ink.
+biov_pca_scree <- function(n = 10L) {
+  p <- biov_pca()
+  k <- max(1L, min(as.integer(n), p$npc))
+  idx <- seq_len(k)
+  list(
+    value = 100 * unname(p$var_exp[idx]),
+    label = paste0("PC", idx),
+    cumulative = 100 * cumsum(unname(p$var_exp[idx])),
+    npc = p$npc
+  )
+}
+
+# The genes driving one component, in the profile contract. Ranked by absolute
+# loading, then drawn in signed order so the two directions form contiguous
+# runs the header band can label: a gene loading negatively is pulling samples
+# the opposite way, which is the half of the story a bare magnitude hides.
+biov_pca_loadings <- function(pc = 1L, n = 20L) {
+  p <- biov_pca()
+  i <- max(1L, min(as.integer(pc), p$npc))
+  k <- max(2L, min(as.integer(n), nrow(p$loadings)))
+  l <- p$loadings[, i]
+  top <- utils::head(order(abs(l), decreasing = TRUE), k)
+  ord <- top[order(l[top], decreasing = TRUE)]
+  vals <- unname(l[ord])
+  list(
+    value = vals,
+    label = p$genes[ord],
+    group = ifelse(vals >= 0, "positive", "negative"),
+    # Pinned so the header keeps both blocks even when one direction is empty.
+    groups = c("positive", "negative"),
+    pc = i,
+    varExp = 100 * p$var_exp[i]
+  )
+}

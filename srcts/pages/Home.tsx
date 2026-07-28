@@ -74,6 +74,9 @@ export const VIZ: CardDef[] = [
   { to: "/clustermap", key: "clustermap", title: "Clustered heatmap",
     desc: "The canonical omics clustermap: genes & samples hierarchically clustered with dendrograms.",
     engines: ["react", "ggplot"] },
+  { to: "/pca", key: "pca", title: "PCA explorer",
+    desc: "One decomposition read three ways: sample scores, the scree that says how much any axis is worth, and the genes loading it. PC1 splits tumour from normal on adipose loss.",
+    engines: ["react", "ggplot"] },
   { to: "/eqtl", key: "eqtl", title: "eQTL / pQTL effect map",
     desc: "Cis-QTL effect sizes (β) as a variant × gene heatmap; blocks of co-regulated pairs stand out.",
     engines: ["react", "ggplot"] },
@@ -94,7 +97,7 @@ export default function Home() {
       <div className="hero">
         <h1><span className="accent">Plotomics</span> Live</h1>
         <p>
-          Plotomics, made interactive. Twenty-five visualizations of real biological datasets,
+          Plotomics, made interactive. Twenty-six visualizations of real biological datasets,
           each rendered two ways - a classic <b>ggplot2</b> image and an interactive
           <b> Shiny&nbsp;React</b> (TSX) component powered by plotomics / WebGL. Pick a
           visualization, then flip the engine toggle to compare. The headline is the

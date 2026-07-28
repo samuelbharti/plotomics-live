@@ -1,6 +1,6 @@
 # Plotomics Live — biological visualizations, two ways
 
-A Shiny **React** (TSX) app that shows twenty-five biological-data visualizations, each
+A Shiny **React** (TSX) app that shows twenty-six biological-data visualizations, each
 rendered **two ways** so you can compare them side by side via an engine toggle:
 
 - **Shiny React** — an interactive, GPU-accelerated TSX component (plotomics /
@@ -29,6 +29,7 @@ always visualize the *same* server-side computation.
 | Driver co-occurrence (UpSet) | plotomics `upset` (canvas bars + membership matrix) | three ggplot2 panels aligned with `patchwork` |
 | Marker gene dot plot | plotomics `dotplot` (canvas dots, area-proportional size + colour) | ggplot2 `geom_point` with `scale_size_area` |
 | Stacked violin | plotomics `violin` (canvas densities, per-feature y ranges) | ggplot2 `geom_polygon` from the same densities, faceted |
+| PCA explorer | plotomics `embedding` for scores, `profile` for scree and loadings | ggplot2 `geom_point` + `stat_ellipse`, `geom_col` |
 | Kaplan-Meier survival | plotomics `km` (canvas step curves + Greenwood band + risk table) | ggplot2 `geom_line` on expanded steps + `patchwork` risk table |
 | Gene network | plotomics `network` (sigma/WebGL, ~1.5k nodes / 7.4k edges) | igraph layout + ggplot2 |
 | Genome browser (IGV) | igv.js (hg19 + variant track) | ggplot2 variant needle plot |
