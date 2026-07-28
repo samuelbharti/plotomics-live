@@ -1,6 +1,6 @@
 # Plotomics Live — biological visualizations, two ways
 
-A Shiny **React** (TSX) app that shows fifteen biological-data visualizations, each
+A Shiny **React** (TSX) app that shows twenty-one biological-data visualizations, each
 rendered **two ways** so you can compare them side by side via an engine toggle:
 
 - **Shiny React** — an interactive, GPU-accelerated TSX component (plotomics /
@@ -20,11 +20,17 @@ always visualize the *same* server-side computation.
 | Expression heatmap | plotomics `heatmap` | ggplot2 `geom_tile` |
 | Clustered heatmap | plotomics `clustermap` (in-browser clustering + dendrograms) | base-R `heatmap()` |
 | Mutation treemap | plotomics `treemap` | hand-rolled ggplot2 treemap |
+| Oncoplot (OncoPrint) | plotomics `oncoplot` (canvas grid + marginal bars + clinical strips) | five ggplot2 panels aligned with `patchwork` |
+| Mutational signatures (SBS96) | plotomics `profile` (96 canvas bars + six-block banner) | ggplot2 `geom_col` + hand-rolled banner |
 | Hi-C contact matrix | plotomics `heatmap` (log contacts) | ggplot2 `geom_raster` |
 | Tahoe-100M perturbation | drug×cell-line coverage clustermap **+ a 380k-cell cell-cycle scatter** (real Tahoe data) | ggplot2 `geom_tile` |
+| Visium spatial transcriptomics | plotomics `spatial` (H&E underlay + canvas spots, one shared transform) | ggplot2 `annotation_raster` + `geom_point` |
+| Xenium single-molecule transcripts | plotomics `embedding` (WebGL, 1M mRNA detections streamed as binary blobs) | ggplot2 `geom_point` on a 40k subsample |
 | Gene network | plotomics `network` (sigma/WebGL, ~1.5k nodes / 7.4k edges) | igraph layout + ggplot2 |
 | Genome browser (IGV) | igv.js (hg19 + variant track) | ggplot2 variant needle plot |
 | Protein structure | 3Dmol.js (AlphaFold, coloured by pLDDT) | ggplot2 per-residue pLDDT profile |
+| Domain lollipop | plotomics `lollipop` (canvas stems + Pfam domains + PTM track) | ggplot2 `geom_segment` + `geom_point` + `ggrepel` |
+| AlphaFold PAE matrix | plotomics `heatmap` (residue × residue error) + canvas row profile | ggplot2 `geom_raster` + `geom_area` profile |
 | Manhattan + QQ (GWAS) | canvas-2D scatter with a chromosome axis | ggplot2 by chromosome + QQ |
 | eQTL / pQTL effect map | plotomics `heatmap` (diverging β) | ggplot2 `geom_tile` |
 | Single-cell ATAC coverage | canvas-2D per-cluster coverage tracks | ggplot2 faceted `geom_area` |
@@ -103,3 +109,8 @@ image tiles served statically, not a live in-app renderer.
 
 PCA/MDS scatter, Kaplan–Meier survival, box/violin group comparison, single-cell
 dotplot, and enrichment lollipop.
+
+## License
+
+The code is MIT (see `LICENSE`). The bundled datasets are not: each keeps the
+license of its source, listed per dataset in `data/prep/PROVENANCE.md`.

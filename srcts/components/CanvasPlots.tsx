@@ -122,6 +122,54 @@ export function SpectrumCanvas({ values }: { values: number[] | Float32Array }) 
   return <canvas ref={ref} style={{ width: "100%", height: "100%", display: "block" }} />;
 }
 
+export interface PaeProfileData {
+  columns: { values: number[] };
+  meta: { residue: number; maxPae: number };
+}
+
+// One row of the PAE matrix as a filled area: how confidently the rest of the
+// chain is placed relative to the selected residue. Low = same rigid body.
+export function PaeProfileCanvas({ data, residues }: { data: PaeProfileData; residues: number }) {
+  const ref = useCanvas((ctx, w, h) => {
+    const v = data.columns.values;
+    const n = v.length;
+    const { maxPae } = data.meta;
+    const mL = 44, mR = 14, mT = 16, mB = 30;
+    const iw = w - mL - mR, ih = h - mT - mB;
+    // Bins map back onto residue positions, so the x axis reads in residues.
+    const px = (i: number) => mL + (n <= 1 ? 0 : (i / (n - 1)) * iw);
+    const py = (val: number) => mT + (1 - val / (maxPae || 1)) * ih;
+    ctx.strokeStyle = GRID; ctx.fillStyle = MUTED; ctx.font = "10px system-ui"; ctx.lineWidth = 1;
+    for (let t = 0; t <= 4; t++) {
+      const val = (t / 4) * maxPae;
+      ctx.beginPath(); ctx.moveTo(mL, py(val)); ctx.lineTo(w - mR, py(val)); ctx.stroke();
+      ctx.fillText(val.toFixed(0), 8, py(val) + 3);
+    }
+    ctx.fillStyle = "#8BC8CB"; ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.moveTo(px(0), py(0));
+    for (let i = 0; i < n; i++) ctx.lineTo(px(i), py(v[i]));
+    ctx.lineTo(px(n - 1), py(0)); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = TEAL; ctx.lineWidth = 1.4; ctx.beginPath();
+    for (let i = 0; i < n; i++) { const X = px(i), Y = py(v[i]); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+    ctx.stroke();
+    // marker at the residue this row is aligned on
+    const mi = residues > 1 ? ((data.meta.residue - 1) / (residues - 1)) * (n - 1) : 0;
+    ctx.strokeStyle = RED; ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(px(mi), mT); ctx.lineTo(px(mi), mT + ih); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = MUTED; ctx.textAlign = "center";
+    for (let t = 0; t <= 4; t++) {
+      const r = Math.round(1 + (t / 4) * (residues - 1));
+      ctx.fillText(String(r), px((t / 4) * (n - 1)), h - 10);
+    }
+    ctx.fillText("residue", mL + iw / 2, h - 1);
+    ctx.textAlign = "left";
+    ctx.fillStyle = INK; ctx.font = "11px system-ui";
+    ctx.fillText(`aligned on ${data.meta.residue}`, mL + 6, mT + 12);
+  }, [data, residues]);
+  return <canvas ref={ref} style={{ width: "100%", height: "100%", display: "block" }} />;
+}
+
 export interface QqData { columns: { x: number[]; y: number[] }; meta: { lambda: number } }
 
 export function QqCanvas({ data }: { data: QqData }) {

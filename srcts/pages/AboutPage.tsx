@@ -65,11 +65,83 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Oncoplot (OncoPrint)",
+    what: "The alteration landscape of the TCGA breast cancer cohort: the recurrently altered drivers across 967 tumours, with per-sample burden above, per-gene frequency to the right, and subtype and stage annotating the samples below.",
+    react: "plotomics oncoplot: the grid, marginal barplots and annotation strips are drawn on one canvas (25 × 967 is over 24,000 cells), with labels and legend as an SVG overlay.",
+    ggplot: "five aligned ggplot2 panels composed with patchwork: geom_tile for the grid and the clinical strips, geom_col for the two marginal barplots.",
+    data: "cBioPortal REST API, study brca_tcga_pan_can_atlas_2018 (Breast Invasive Carcinoma, TCGA PanCancer Atlas, hg19). Somatic mutations collapsed to the standard alteration classes, plus GISTIC deep deletions and amplifications; a sample carrying two classes in one gene is called multi-hit. Gene and sample ordering (the cBioPortal memo sort) is computed server-side and shipped to both engines, so neither can tie-break differently. Observed frequencies match the literature: PIK3CA 38% and TP53 37%.",
+    refs: [
+      { label: "Cerami et al., Cancer Discov 2:401–404 (2012) - the cBioPortal", href: "https://doi.org/10.1158/2159-8290.CD-12-0095" },
+      { label: "Gao et al., Sci Signal 6:pl1 (2013) - integrative analysis with cBioPortal", href: "https://doi.org/10.1126/scisignal.2004088" },
+      { label: "TCGA Network, Nature 490:61–70 (2012) - molecular portraits of human breast tumours", href: "https://doi.org/10.1038/nature11412" },
+      { label: "Hoadley et al., Cell 173:291–304 (2018) - the PanCancer Atlas", href: "https://doi.org/10.1016/j.cell.2018.03.022" },
+    ],
+  },
+  {
+    title: "Visium spatial transcriptomics",
+    what: "3,798 Visium capture spots on a human breast cancer section, at their real slide coordinates over the H&E image, coloured by graph-based cluster or by a gene from a 60-gene panel.",
+    react: "plotomics spatial: the tissue image and the spots share one contain-fit transform computed once, so histology and overlay cannot drift apart on resize or full-screen. A spot-opacity control fades the overlay to read the histology underneath.",
+    ggplot: "annotation_raster of the same PNG the browser fetches, with geom_point on top and coord_fixed. y is negated in the data rather than using scale_y_reverse, which would flip the raster's mapping and draw the tissue upside down under correctly-placed spots.",
+    data: "10x Genomics public dataset, Human Breast Cancer (Block A Section 1), Visium Spatial Gene Expression v1.1.0, CC BY 4.0. Spot coordinates and the low-res H&E come from the spatial bundle with the published scale factor applied; clusters and the marker panel come from 10x's own graph-based clustering and differential expression, so the cluster assignment is the dataset's rather than ours. Expression is log1p CP10K computed against each spot's total counts. The selected gene's per-spot vector is computed server-side and sent, so the two engines colour from one computation.",
+    refs: [
+      { label: "10x Genomics - Human Breast Cancer (Block A Section 1)", href: "https://www.10xgenomics.com/datasets/human-breast-cancer-block-a-section-1-1-standard" },
+      { label: "Ståhl et al., Science 353:78–82 (2016) - spatially resolved transcriptomics", href: "https://doi.org/10.1126/science.aaf2403" },
+    ],
+  },
+  {
+    title: "Xenium single-molecule transcripts",
+    what: "One million individual mRNA detections at their micrometre coordinates in a human breast cancer section, drawn from the 42.6 million the run reported. Colour by curated marker class, by the twelve most abundant genes, or by whether the molecule fell inside a nucleus.",
+    react: "plotomics embedding, the same WebGL scatter the UMAP page uses, here on real tissue coordinates rather than an abstract embedding. Coordinates and category codes are fetched as binary blobs over plain HTTP, never over the websocket. The category order and palette are passed explicitly so a class keeps its colour when you switch fields.",
+    ggplot: "geom_point on a 40,000-row subsample with coord_fixed and scale_y_reverse, reading its levels and colours from the same sidecar the browser reads. The subsample is the honest limit of the static engine, and the stat bar names it.",
+    data: "10x Genomics public dataset, Xenium In Situ, Human Breast Cancer Rep 1 (Xenium Analyzer 1.0.1, 313-gene breast panel), CC BY 4.0. Detections are filtered to the vendor-recommended QV 20 and to real genes, dropping the 228 negative-control, blank, antisense and unused-codeword features, which leaves 34.4M of the 42.6M. The million shown are a seeded Bernoulli sample of those, shuffled so no class is systematically drawn over another. Coordinates are quantized to Int16 over the section bounds, a 0.11 um step that is finer than the instrument localizes a molecule to. Marker classes are our curation of the panel, and deliberately leave broadly expressed genes in Other rather than forcing them into a lineage.",
+    refs: [
+      { label: "10x Genomics - Xenium human breast cancer (FFPE, add-on panel)", href: "https://www.10xgenomics.com/datasets/ffpe-human-breast-with-custom-add-on-panel-1-standard" },
+      { label: "Janesick et al., Nat Commun 14:8353 (2023) - high resolution mapping of the breast tumour microenvironment", href: "https://doi.org/10.1038/s41467-023-43458-x" },
+    ],
+  },
+  {
+    title: "Mutational signatures (SBS96)",
+    what: "The 96 trinucleotide contexts under the six substitution blocks. The observed catalogue is 21,330 SNVs across 120 TCGA breast tumours; the four profiles below it were extracted de novo from those spectra by NMF. Two come out as the C>T and C>G arms of APOBEC and one as clock-like CpG deamination, recovered from the data rather than matched to a catalogue.",
+    react: "plotomics profile: 96 canvas bars under a six-block banner, with the group colours that every published signature figure uses.",
+    ggplot: "geom_col over a continuous x with the banner hand-rolled as a geom_rect layer, rather than facet_grid, which would introduce six panel strips and inter-panel gaps the convention does not have.",
+    data: "GDC open-access TCGA-BRCA Masked Somatic Mutation MAFs (250 files, no account needed). GDC MAFs carry a CONTEXT column with an 11-base reference window, so the trinucleotide context is a substring and no BSgenome package is required. Signatures are fitted with seeded Lee-and-Seung multiplicative-update NMF at rank 4, reconstructing the catalogue at cosine similarity 0.999. These are NOT COSMIC reference signatures: COSMIC's terms (clause 4.7) forbid redistributing any part of COSMIC, so nothing from it is shipped and the profiles are named BRCA-A to BRCA-D rather than borrowing SBS numbers.",
+    refs: [
+      { label: "Alexandrov et al., Nature 500:415–421 (2013) - signatures of mutational processes", href: "https://doi.org/10.1038/nature12477" },
+      { label: "Alexandrov et al., Nature 578:94–101 (2020) - the repertoire of mutational signatures", href: "https://doi.org/10.1038/s41586-020-1943-3" },
+      { label: "Lee & Seung, Nature 401:788–791 (1999) - non-negative matrix factorization", href: "https://doi.org/10.1038/44565" },
+      { label: "NCI Genomic Data Commons", href: "https://gdc.cancer.gov" },
+    ],
+  },
+  {
+    title: "Domain lollipop",
+    what: "Where the TCGA-BRCA variants land on six driver proteins, drawn over their Pfam domain architecture with UniProt modification sites underneath. The contrast between genes is the point: all five of TP53's top hotspots fall inside its DNA-binding domain, while CDH1 is truncated across its cadherin repeats.",
+    react: "plotomics lollipop: backbone, domain rectangles, stems and PTM ticks on a canvas, with labels, axis and legend as an SVG overlay. Head area scales with recurrence.",
+    ggplot: "one ggplot2 panel using two independent discrete scales, fill for domains and colour for variant classes, with the domain and PTM tracks below zero and clipping off.",
+    data: "Variant positions from the same cBioPortal TCGA-BRCA fetch as the oncoplot (proteinPosStart). Pfam domains from the InterPro REST API (CC0), PTM sites from UniProtKB MOD_RES features (CC BY 4.0). Which stems get a text label is resolved server-side, so ggrepel and the canvas label the same variants rather than each picking its own top-N. Note that PIK3CA's H1047R sits just past the end of Pfam PF00454 (798-1015); the plot shows Pfam's boundary rather than the wider UniProt kinase-domain range.",
+    refs: [
+      { label: "Paysan-Lafosse et al., Nucleic Acids Res (2023) - InterPro", href: "https://doi.org/10.1093/nar/gkac993" },
+      { label: "UniProt Consortium, Nucleic Acids Res (2023) - UniProt", href: "https://doi.org/10.1093/nar/gkac1052" },
+      { label: "Mermel et al., Genome Biol 12:R41 (2011) - GISTIC2", href: "https://doi.org/10.1186/gb-2011-12-4-r41" },
+    ],
+  },
+  {
+    title: "AlphaFold PAE matrix",
+    what: "The predicted aligned error matrix for the same BRCA driver proteins: entry (x, y) is the expected position error at residue x when the prediction is superposed on residue y. Dark diagonal blocks are confidently-folded domains; a bright block between two dark ones means both domains are individually confident but their relative orientation is not.",
+    react: "plotomics heatmap (WebGL) on the residue × residue matrix, plus a canvas profile of a single row.",
+    ggplot: "geom_raster on the same matrix with the same LTC ramp and the same colour limits, plus a geom_area profile.",
+    data: "AlphaFold DB predicted aligned error (JSON), fetched live by UniProt accession and cached. The file URL is resolved from the AlphaFold API rather than hardcoded, since the model version has already moved from v4 to v6. Matrices larger than 400 residues per side are block-averaged before plotting, and the binning factor is shown in the control bar; both engines plot the binned matrix so they cannot disagree.",
+    refs: [
+      { label: "Jumper et al., Nature 596:583–589 (2021) - AlphaFold", href: "https://doi.org/10.1038/s41586-021-03819-2" },
+      { label: "Varadi et al., Nucleic Acids Res (2022) - AlphaFold Protein Structure Database", href: "https://doi.org/10.1093/nar/gkab1061" },
+      { label: "AlphaFold DB FAQ - interpreting PAE", href: "https://alphafold.ebi.ac.uk/faq" },
+    ],
+  },
+  {
     title: "Genome browser (IGV)",
     what: "The breast-cancer somatic variants along the genome (hg19), as a live genome browser and as a variant needle/lollipop plot.",
     react: "igv.js embedded as a TSX component (via plotomics igv); the hg19 reference is streamed from igv.js's data servers, with an inline track of the variants.",
     ggplot: "a needle/lollipop plot of variant recurrence vs genomic position (geom_segment + geom_point + labels).",
-    data: "Recurrent BRCA somatic variants (gene, genomic position, protein change, recurrence) sourced from the lifescience-shiny-gallery BRCA mutation dataset (derived from TCGA-BRCA / COSMIC hotspots).",
+    data: "Recurrent BRCA somatic variants (gene, genomic position, protein change, recurrence) sourced from the lifescience-shiny-gallery BRCA mutation dataset, which pulls the TCGA-BRCA PanCancer Atlas study from the public cBioPortal REST API. Nothing here comes from COSMIC.",
     refs: [
       { label: "Robinson et al., Nat Biotechnol 29:24–26 (2011) - Integrative Genomics Viewer", href: "https://doi.org/10.1038/nbt.1754" },
       { label: "igv.js", href: "https://github.com/igvteam/igv.js" },
@@ -81,7 +153,7 @@ const ENTRIES: Entry[] = [
     what: "Expression of the most-variable genes across tumour and normal breast samples, optionally z-scored; the clustered version reorders genes & samples by hierarchical clustering with dendrograms.",
     react: "plotomics heatmap / clustermap (WebGL), LTC colour ramp.",
     ggplot: "geom_tile (heatmap) and base-R heatmap() with dendrograms (clustermap).",
-    data: "TCGA breast-cancer (BRCA) RNA-seq: differential expression + a log2-CPM expression matrix (40 samples), from the lifescience-shiny-gallery de-brca dataset.",
+    data: "TCGA breast-cancer (BRCA) RNA-seq from the lifescience-shiny-gallery de-brca dataset: recount3 counts analysed with DESeq2, tumour vs normal, on a balanced 20 + 20 sample subset. The matrix is DESeq2's variance-stabilizing transform, not log2-CPM.",
     refs: [
       { label: "The Cancer Genome Atlas (TCGA-BRCA)", href: "https://www.cancer.gov/tcga" },
       { label: "recount3 - uniformly processed RNA-seq", href: "https://rna.recount.bio" },
@@ -162,7 +234,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across fifteen common biological visualizations.
+            compare the two approaches across twenty-one common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

@@ -1,4 +1,5 @@
 node_modules/
 data/raw/
+docs/local/
 .DS_Store
 *.log

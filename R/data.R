@@ -282,6 +282,35 @@ biov_umap_sample <- local({
   }
 })
 
+# ---- Xenium single-molecule transcripts -----------------------------------
+# The React side streams the binary blobs in www/data straight from HTTP, so
+# the server never sees the full million detections. What it does read is the
+# sidecar, because that is where the level order and the colours live: driving
+# both engines from the one file is what stops them drifting apart.
+biov_xenium_meta <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- jsonlite::fromJSON(
+        .data_path(file.path("..", "www", "data", "xenium_meta.json")),
+        simplifyVector = TRUE)
+    }
+    cache
+  }
+})
+
+# The 40k subsample the ggplot2 side is limited to, mirroring biov_umap_sample.
+biov_xenium_sample <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("xenium_ggplot_sample.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
 # ---- GWAS summary statistics (Manhattan + QQ) -----------------------------
 # Simulated genome-wide association results: SNPs across 22 chromosomes with a
 # handful of genuine association peaks. Seeded so both engines see identical
@@ -420,5 +449,403 @@ biov_eqtl <- local({
     colnames(m) <- sprintf("GENE%02d", seq_len(n_gene))
     list(matrix = m, values = as.numeric(t(m)), nrows = n_var, ncols = n_gene,
          rowLabels = rownames(m), colLabels = colnames(m))
+  }
+})
+
+# ---- oncoplot / OncoPrint (cohort alteration landscape) -------------------
+# Real TCGA-BRCA per-sample alterations from cBioPortal (see
+# data/prep/prepare-brca-cohort.R): somatic mutations plus GISTIC deep
+# deletions and amplifications, collapsed to one class per gene x sample, with
+# clinical annotation and overall survival alongside.
+biov_brca_alterations <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("brca_oncoplot.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+biov_brca_clinical <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("brca_clinical.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+# cBioPortal's memoSort: genes by descending alteration frequency, then samples
+# ordered so the top gene's carriers come first, ties broken by the next gene
+# down. That ordering is what makes mutual exclusivity between drivers read as
+# a staircase. It is computed HERE, once, and shipped to both engines, because
+# two implementations tie-breaking differently would silently disagree.
+.memo_sort <- function(hit) {
+  g <- order(rowSums(hit), decreasing = TRUE)
+  hit <- hit[g, , drop = FALSE]
+  keys <- lapply(seq_len(nrow(hit)), function(i) -as.integer(hit[i, ]))
+  list(genes = g, samples = do.call(order, c(keys, list(method = "radix"))))
+}
+
+biov_oncoplot <- local({
+  cache <- new.env(parent = emptyenv())
+  function(n_genes = 25L) {
+    key <- as.character(n_genes)
+    hit0 <- cache[[key]]
+    if (!is.null(hit0)) return(hit0)
+
+    alt <- biov_brca_alterations()
+    classes <- names(biov_variant_colours())
+    classes <- classes[classes %in% unique(alt$class)]
+
+    # Keep the n most recurrently altered genes.
+    gene_freq <- sort(table(alt$gene), decreasing = TRUE)
+    genes <- names(gene_freq)[seq_len(min(n_genes, length(gene_freq)))]
+    alt <- alt[alt$gene %in% genes, , drop = FALSE]
+    samples <- sort(unique(alt$sample))
+
+    gi <- match(alt$gene, genes)
+    si <- match(alt$sample, samples)
+    ci <- match(alt$class, classes)
+    m <- matrix(0L, length(genes), length(samples),
+                dimnames = list(genes, samples))
+    m[cbind(gi, si)] <- ci
+
+    ord <- .memo_sort(m > 0L)
+    m <- m[ord$genes, ord$samples, drop = FALSE]
+    genes <- rownames(m)
+    samples <- colnames(m)
+
+    clin <- biov_brca_clinical()
+    ci_row <- match(samples, clin$sample)
+    ann <- function(name, values, palette) {
+      f <- factor(values)
+      list(name = name, levels = I(levels(f)),
+           codes = ifelse(is.na(f), -1L, as.integer(f) - 1L),
+           colors = I(unname(palette(nlevels(f)))))
+    }
+
+    out <- list(
+      matrix = m,
+      codes = as.integer(t(m)),          # row-major, 0 = no alteration
+      genes = genes, samples = samples,
+      nrows = nrow(m), ncols = ncol(m),
+      classes = I(classes),
+      classColors = I(unname(biov_variant_colours()[classes])),
+      tmb = as.integer(colSums(m > 0L)),
+      # unname() is load-bearing: rowSums() keeps the gene names, and Shiny
+      # serializes a named vector as a JSON object rather than an array, which
+      # the component would read as an empty column.
+      freq = unname(round(100 * rowSums(m > 0L) / ncol(m), 1)),
+      annotations = list(
+        ann("Subtype", clin$subtype[ci_row], biov_categorical),
+        ann("Stage", clin$stage[ci_row],
+            function(k) biov_gradient()[round(seq(2, 6, length.out = k))])),
+      altered = sum(colSums(m > 0L) > 0L),
+      cohort = nrow(clin))
+    cache[[key]] <- out
+    out
+  }
+})
+
+# ---- Visium spatial transcriptomics ---------------------------------------
+# Real 10x Visium capture spots on a breast cancer section, with the low-res
+# H&E the browser also fetches (see data/prep/prepare-visium.R). The server
+# sends the selected gene's per-spot vector rather than shipping the whole
+# panel and letting the client subset it: 3,798 rounded numbers is nothing, and
+# it means the ggplot fill and the canvas fill come from one computation.
+biov_visium <- local({
+  cache <- NULL
+  function(gene = NULL, colour_by = "cluster") {
+    if (is.null(cache)) {
+      spots <- utils::read.csv(.data_path("visium_spots.csv"),
+                               stringsAsFactors = FALSE)
+      expr <- utils::read.csv(.data_path("visium_expr.csv"),
+                              stringsAsFactors = FALSE, check.names = FALSE)
+      meta <- jsonlite::fromJSON(.data_path("visium_meta.json"))
+      genes <- expr$gene
+      mat <- as.matrix(expr[, spots$barcode, drop = FALSE])
+      rownames(mat) <- genes
+      cl <- factor(spots$cluster,
+                   levels = paste("Cluster", sort(unique(as.integer(
+                     sub("^Cluster ", "", spots$cluster))))))
+      cache <<- list(spots = spots, mat = mat, genes = sort(genes),
+                     meta = meta, clusterLevels = levels(cl),
+                     clusterColors = biov_categorical(nlevels(cl)))
+    }
+    g <- if (is.null(gene) || !gene %in% rownames(cache$mat)) {
+      "ERBB2"
+    } else gene
+    if (!g %in% rownames(cache$mat)) g <- rownames(cache$mat)[1]
+    e <- unname(cache$mat[g, ])
+    list(x = cache$spots$x, y = cache$spots$y,
+         cluster = cache$spots$cluster, barcode = cache$spots$barcode,
+         expr = e, gene = g, genes = I(cache$genes),
+         colourBy = colour_by,
+         clusterLevels = I(cache$clusterLevels),
+         clusterColors = I(cache$clusterColors),
+         image = cache$meta$image, imgWidth = cache$meta$imgWidth,
+         imgHeight = cache$meta$imgHeight,
+         spotDiameter = cache$meta$spotDiameter,
+         nSpots = nrow(cache$spots), nGenes = length(cache$genes),
+         exprMax = max(e), dataset = cache$meta$dataset)
+  }
+})
+
+# ---- SBS96 mutational signatures ------------------------------------------
+# The observed 96-context catalogue for a TCGA-BRCA cohort plus signatures
+# extracted de novo from it (see data/prep/prepare-sbs96.R). These are NOT
+# COSMIC reference signatures: COSMIC's terms forbid redistribution, so the
+# page ships real spectra computed from open GDC data and names them
+# accordingly. The resemblance to known processes is described in the copy, not
+# asserted by the labels.
+biov_sbs96 <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cat_df <- utils::read.csv(.data_path("sbs96_catalogue.csv"),
+                                stringsAsFactors = FALSE)
+      sig_df <- utils::read.csv(.data_path("sbs96_signatures.csv"),
+                                stringsAsFactors = FALSE, check.names = FALSE)
+      exp_df <- utils::read.csv(.data_path("sbs96_exposures.csv"),
+                                stringsAsFactors = FALSE, check.names = FALSE)
+      sig_names <- setdiff(names(sig_df), c("context", "trinuc", "sub"))
+      cache <<- list(
+        contexts = cat_df$context, trinuc = cat_df$trinuc, sub = cat_df$sub,
+        counts = cat_df$count,
+        signatures = sig_names,
+        sig = sig_df[sig_names],
+        exposures = exp_df,
+        subLevels = names(biov_sbs_colours()),
+        subColors = unname(biov_sbs_colours()),
+        nTumours = nrow(exp_df),
+        nSnv = sum(cat_df$count))
+    }
+    cache
+  }
+})
+
+# One profile: either the observed cohort catalogue or a de novo signature.
+# `which` is "catalogue" or a signature name.
+biov_sbs96_profile <- function(which = "catalogue") {
+  s <- biov_sbs96()
+  if (identical(which, "catalogue")) {
+    v <- as.numeric(s$counts)
+    lab <- "SNVs"
+  } else {
+    if (!which %in% s$signatures) which <- s$signatures[1]
+    v <- as.numeric(s$sig[[which]])
+    lab <- "share of signature"
+  }
+  list(profile = which, value = v, contexts = s$contexts,
+       trinuc = s$trinuc, sub = s$sub,
+       subLevels = I(s$subLevels), subColors = I(s$subColors),
+       choices = I(c("catalogue", s$signatures)),
+       yLabel = lab, isCatalogue = identical(which, "catalogue"),
+       total = sum(v), nTumours = s$nTumours, nSnv = s$nSnv,
+       # Share of cohort mutations each signature accounts for.
+       share = if (identical(which, "catalogue")) NA_real_ else
+         round(100 * sum(s$exposures[[which]]) /
+                 sum(as.matrix(s$exposures[s$signatures])), 1))
+}
+
+# ---- protein domain lollipop ----------------------------------------------
+# Three real layers over one protein: mutation stems from the same cBioPortal
+# TCGA-BRCA fetch the oncoplot uses, Pfam domain rectangles from InterPro, and
+# PTM sites from UniProt (see data/prep/prepare-protein-tracks.R).
+biov_protein_domains <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("protein_domains.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+biov_protein_ptm <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("protein_ptm.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+biov_lollipop_variants <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("brca_lollipop.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+# Genes that have both a domain architecture and variants to show, most
+# variant-rich first (drives the picker order).
+biov_lollipop_genes <- function() {
+  d <- biov_protein_domains()
+  v <- biov_lollipop_variants()
+  g <- intersect(unique(d$gene), unique(v$gene))
+  tot <- stats::aggregate(count ~ gene, data = v[v$gene %in% g, ], FUN = sum)
+  tot$gene[order(-tot$count)]
+}
+
+biov_lollipop <- local({
+  cache <- new.env(parent = emptyenv())
+  function(gene = "TP53", label_top_n = 12L) {
+    hit <- cache[[gene]]
+    if (!is.null(hit)) return(hit)
+
+    dom <- biov_protein_domains()
+    dom <- dom[dom$gene == gene, , drop = FALSE]
+    if (!nrow(dom)) return(NULL)
+    plen <- dom$length[1]
+    uniprot <- dom$uniprot[1]
+
+    v <- biov_lollipop_variants()
+    v <- v[v$gene == gene & v$residue >= 1 & v$residue <= plen, , drop = FALSE]
+    if (!nrow(v)) return(NULL)
+    # Several distinct protein changes can hit one residue; keep them separate
+    # so the classes stay honest, but order by position for the label stacking.
+    v <- v[order(v$residue, -v$count), ]
+
+    classes <- names(biov_variant_colours())
+    classes <- classes[classes %in% unique(v$class)]
+
+    ptm <- biov_protein_ptm()
+    ptm <- ptm[ptm$gene == gene, , drop = FALSE]
+
+    # Resolve the labelled stems ONCE so ggrepel and the canvas label the same
+    # variants. 0-based for the client, 1-based for the ggplot side.
+    top <- order(-v$count)[seq_len(min(label_top_n, nrow(v)))]
+    top <- sort(top)
+
+    out <- list(
+      gene = gene, uniprot = uniprot, length = plen,
+      position = v$residue, count = v$count,
+      class = v$class, label = v$protein_change,
+      labelRows = top,
+      labelIndex = I(as.integer(top - 1L)),
+      classes = I(classes),
+      classColors = I(unname(biov_variant_colours()[classes])),
+      domains = lapply(seq_len(nrow(dom)), function(i) {
+        list(name = dom$name[i], start = dom$start[i], end = dom$end[i])
+      }),
+      domainNames = dom$name, domainStart = dom$start, domainEnd = dom$end,
+      domainColors = I(biov_categorical(nrow(dom))),
+      ptms = if (nrow(ptm)) lapply(seq_len(nrow(ptm)), function(i) {
+        list(position = ptm$position[i], type = ptm$type[i])
+      }) else list(),
+      ptmPosition = ptm$position, ptmType = ptm$type,
+      nVariants = nrow(v), nSamples = sum(v$count))
+    cache[[gene]] <- out
+    out
+  }
+})
+
+# ---- AlphaFold predicted aligned error (PAE) ------------------------------
+# The other half of an AlphaFold prediction. Entry (x, y) is the expected
+# position error at residue x when the prediction is superposed on residue y.
+# Low blocks along the diagonal are confidently-folded domains; a high
+# off-diagonal block between two low blocks means both domains are individually
+# confident but their relative orientation is not. That is the read the pLDDT
+# profile on the protein page cannot give you.
+
+# AlphaFold bumps its model version periodically (v4 is already retired and
+# returns 404), so ask the API for the current file URLs instead of guessing.
+# Falls back to the known v6 pattern when the API is unreachable, and caches
+# per accession so an offline session pays the timeout once.
+.af_urls <- local({
+  cache <- new.env(parent = emptyenv())
+  function(uniprot) {
+    hit <- cache[[uniprot]]
+    if (!is.null(hit)) return(hit)
+    urls <- list(
+      pdb = sprintf("https://alphafold.ebi.ac.uk/files/AF-%s-F1-model_v6.pdb", uniprot),
+      pae = sprintf("https://alphafold.ebi.ac.uk/files/AF-%s-F1-predicted_aligned_error_v6.json",
+                    uniprot))
+    tmp <- tempfile(fileext = ".json")
+    on.exit(unlink(tmp), add = TRUE)
+    old <- options(timeout = 15); on.exit(options(old), add = TRUE)
+    # A miss here is expected and handled (we fall back to the v6 pattern), so
+    # don't let download.file's warning reach the Shiny console.
+    got <- suppressWarnings(try(utils::download.file(
+      sprintf("https://alphafold.ebi.ac.uk/api/prediction/%s", uniprot),
+      tmp, mode = "wb", quiet = TRUE), silent = TRUE))
+    if (!inherits(got, "try-error") && file.exists(tmp) && file.info(tmp)$size > 0) {
+      j <- try(jsonlite::fromJSON(tmp), silent = TRUE)
+      if (!inherits(j, "try-error") && is.data.frame(j) && nrow(j) >= 1) {
+        if (!is.null(j$pdbUrl)) urls$pdb <- j$pdbUrl[1]
+        if (!is.null(j$paeDocUrl)) urls$pae <- j$paeDocUrl[1]
+      }
+    }
+    cache[[uniprot]] <- urls
+    urls
+  }
+})
+
+.af_pae_path <- function(uniprot) {
+  dir.create(.data_path("raw"), showWarnings = FALSE, recursive = TRUE)
+  dest <- .data_path(file.path("raw", paste0("PAE-", uniprot, ".json")))
+  if (!file.exists(dest) || file.info(dest)$size == 0) {
+    suppressWarnings(try(
+      utils::download.file(.af_urls(uniprot)$pae, dest, mode = "wb", quiet = TRUE),
+      silent = TRUE))
+  }
+  dest
+}
+
+# Block-mean a square matrix down to at most n_max per side. PIK3CA is 1,068
+# residues, i.e. a 1.14M-cell matrix - far more than a screen can resolve or
+# than is worth pushing over the websocket. Binning is reported in the stat bar
+# rather than being applied silently, and both engines plot the binned matrix so
+# they cannot disagree.
+.bin_square <- function(m, n_max = 400L) {
+  n <- nrow(m)
+  if (n <= n_max) return(list(m = m, bin = 1L))
+  f <- ceiling(n / n_max)
+  idx <- rep(seq_len(ceiling(n / f)), each = f)[seq_len(n)]
+  k <- as.numeric(table(idx))
+  agg <- rowsum(m, idx) / k
+  list(m = t(rowsum(t(agg), idx) / k), bin = as.integer(f))
+}
+
+biov_pae <- local({
+  cache <- new.env(parent = emptyenv())
+  function(uniprot = "P04637", n_max = 400L) {
+    key <- paste0(uniprot, "_", n_max)
+    hit <- cache[[key]]
+    if (!is.null(hit)) return(hit)
+    path <- .af_pae_path(uniprot)
+    if (!file.exists(path) || file.info(path)$size == 0) return(NULL)
+    j <- try(jsonlite::fromJSON(path), silent = TRUE)
+    if (inherits(j, "try-error") || is.null(j$predicted_aligned_error)) return(NULL)
+    full <- as.matrix(j$predicted_aligned_error[[1]])
+    b <- .bin_square(full, n_max)
+    # Round the matrix ITSELF, not just the feed copy, for two reasons: both
+    # engines then plot bit-identical numbers, and the feed stays small. Shiny
+    # serializes at 16 significant digits, so an unrounded binned mean costs ~15
+    # bytes instead of ~4 (PIK3CA: 1.84 MB vs 0.47 MB). AlphaFold reports PAE as
+    # integers anyway, so 0.1 A is already finer than the source.
+    m <- round(b$m, 1)
+    n <- nrow(m)
+    # Label each binned row/col with the residue it centres on.
+    labs <- as.character(round(seq(1, nrow(full), length.out = n)))
+    out <- list(matrix = m, values = as.numeric(t(m)),
+                nrows = n, ncols = n, rowLabels = labs, colLabels = labs,
+                residues = nrow(full), bin = b$bin,
+                maxPae = as.numeric(j$max_predicted_aligned_error[1]))
+    cache[[key]] <- out
+    out
   }
 })

@@ -17,8 +17,20 @@ export const VIZ: CardDef[] = [
   { to: "/tahoe", key: "tahoe", title: "Tahoe-100M perturbation",
     desc: "Real drug × cell-line coverage from the Tahoe-100M single-cell atlas, clustered - prepared from the 100M-cell grid via duckdb.",
     engines: ["react", "ggplot"] },
+  { to: "/visium", key: "visium", title: "Visium spatial transcriptomics",
+    desc: "3,798 real capture spots on a breast cancer section, drawn over the H&E they came from. Colour by cluster or by any gene in the panel.",
+    engines: ["react", "ggplot"] },
+  { to: "/xenium", key: "xenium", title: "Xenium single-molecule transcripts",
+    desc: "One million individual mRNA molecules at their real position in a breast cancer section, out of the 42.6M the run detected. WebGL draws them all; ggplot2 subsamples.",
+    engines: ["react", "ggplot"] },
   { to: "/ndarray", key: "ndarray", title: "N-dimensional array",
     desc: "A hyperspectral image cube (100×100×24) - the large multi-dimensional array format used in microscopy and geoscience. Re-slice any channel instantly on the GPU.",
+    engines: ["react", "ggplot"] },
+  { to: "/oncoplot", key: "oncoplot", title: "Oncoplot (OncoPrint)",
+    desc: "The cohort alteration landscape: 25 drivers × 967 real TCGA breast tumours, memo-sorted so mutual exclusivity reads as a staircase.",
+    engines: ["react", "ggplot"] },
+  { to: "/signatures", key: "signatures", title: "Mutational signatures (SBS96)",
+    desc: "The 96 trinucleotide contexts under the six substitution blocks, plus four signatures extracted de novo from 120 real breast tumours. APOBEC falls out on its own.",
     engines: ["react", "ggplot"] },
   { to: "/network", key: "network", title: "Gene network",
     desc: "A large modular gene network (~1,500 nodes, ~7,400 edges). WebGL/sigma stays interactive; ggplot2 renders it statically.",
@@ -28,6 +40,12 @@ export const VIZ: CardDef[] = [
     engines: ["react", "ggplot"] },
   { to: "/protein", key: "protein", title: "Protein structure",
     desc: "Interactive 3D AlphaFold structures (3Dmol.js) vs a ggplot2 per-residue pLDDT confidence profile.",
+    engines: ["react", "ggplot"] },
+  { to: "/pae", key: "pae", title: "AlphaFold PAE matrix",
+    desc: "Predicted aligned error: which parts of a structure are confidently placed relative to each other. Domain blocks the pLDDT profile cannot show.",
+    engines: ["react", "ggplot"] },
+  { to: "/lollipop", key: "lollipop", title: "Domain lollipop",
+    desc: "Variants along a protein over its Pfam architecture, with PTM sites. TP53 piles into the DNA-binding domain; CDH1 is truncated across its cadherin repeats.",
     engines: ["react", "ggplot"] },
   { to: "/manhattan", key: "manhattan", title: "Manhattan + QQ (GWAS)",
     desc: "Genome-wide association: -log10 p for 50,000 SNPs along the genome with a significance line, plus a Q-Q plot.",
@@ -64,7 +82,7 @@ export default function Home() {
       <div className="hero">
         <h1><span className="accent">Plotomics</span> Live</h1>
         <p>
-          Plotomics, made interactive. Fifteen visualizations of real biological datasets,
+          Plotomics, made interactive. Twenty visualizations of real biological datasets,
           each rendered two ways - a classic <b>ggplot2</b> image and an interactive
           <b> Shiny&nbsp;React</b> (TSX) component powered by plotomics / WebGL. Pick a
           visualization, then flip the engine toggle to compare. The headline is the

@@ -32,6 +32,30 @@ const KB: Viz[] = [
     what: "an interactive 3-D structure (AlphaFold) plus a per-residue confidence profile.",
     capacity: "one structure at a time (thousands of atoms), fetched live from AlphaFold.",
     pick: "you want to inspect a protein's 3-D fold, domains, or a variant residue." },
+  { route: "/oncoplot", name: "Oncoplot (OncoPrint)", kw: ["oncoplot", "oncoprint", "waterfall", "maf", "cohort", "somatic", "driver", "mutation matrix", "tumour", "tumor", "cancer", "tmb", "mutual exclusivity", "memo sort"],
+    what: "a gene x sample grid of alteration classes with per-sample burden, per-gene frequency and clinical strips.",
+    capacity: "hundreds of genes x thousands of samples; the grid is canvas-drawn, so cohort scale is not a problem.",
+    pick: "you have per-sample somatic alterations (a MAF, or mutations plus copy number) and want the cohort landscape." },
+  { route: "/visium", name: "Visium spatial transcriptomics", kw: ["spatial", "visium", "10x", "tissue", "histology", "h&e", "he", "slide", "section", "spot", "in situ", "spatial transcriptomics", "microenvironment", "niche"],
+    what: "capture spots at their tissue coordinates over the H&E section, coloured by cluster or by a gene.",
+    capacity: "thousands of spots here; the canvas layer handles tens of thousands, and Visium HD bins would go the same way.",
+    pick: "your measurements have real coordinates on a tissue section and the anatomy is part of the result." },
+  { route: "/xenium", name: "Xenium single-molecule transcripts", kw: ["xenium", "merfish", "cosmx", "single molecule", "single-molecule", "smfish", "in situ", "imaging-based", "transcript", "molecule", "subcellular", "spatial", "detection", "probe", "segmentation-free"],
+    what: "individual mRNA detections at their micrometre coordinates in a tissue section, coloured by marker class, gene, or nuclear position.",
+    capacity: "a million molecules on the GPU here, out of 42.6M in the run; the limit is transfer size, not the renderer.",
+    pick: "your spatial assay resolves single molecules and you do not want to collapse them into cells or spots first." },
+  { route: "/signatures", name: "Mutational signatures (SBS96)", kw: ["signature", "sbs", "sbs96", "mutational signature", "trinucleotide", "context", "apobec", "clock-like", "cosmic", "nmf", "spectrum", "substitution", "kataegis", "deamination"],
+    what: "the 96 trinucleotide contexts under the six substitution blocks, for an observed catalogue or a de novo signature.",
+    capacity: "96 bars here; the profile component takes a few thousand bins if you need a binned genomic profile.",
+    pick: "you have somatic SNVs with sequence context and want to see which mutational processes are at work." },
+  { route: "/lollipop", name: "Domain lollipop", kw: ["lollipop", "needle", "domain", "pfam", "interpro", "hotspot", "protein change", "amino acid", "residue", "ptm", "phospho", "variant position", "truncating"],
+    what: "mutation stems along a protein over its Pfam domain architecture, with PTM sites underneath.",
+    capacity: "thousands of variants per protein; stems and domains are canvas-drawn.",
+    pick: "you have variants with amino-acid positions and want to see whether they cluster in a functional domain." },
+  { route: "/pae", name: "AlphaFold PAE matrix", kw: ["pae", "predicted aligned error", "alphafold", "confidence", "domain", "orientation", "contact map", "structure quality", "multimer", "rigid body"],
+    what: "the residue x residue predicted aligned error matrix from an AlphaFold prediction.",
+    capacity: "proteins of a few thousand residues; larger matrices are block-averaged before plotting.",
+    pick: "you want to know whether two confident domains are confidently placed relative to each other." },
   { route: "/igv", name: "Genome browser (IGV)", kw: ["genome", "browser", "igv", "locus", "bam", "vcf", "bed", "bigwig", "track", "variant", "mutation position", "coordinate"],
     what: "a live genome browser (igv.js) plus a variant needle/lollipop plot.",
     capacity: "streams indexed tracks (BAM/VCF/bigWig) on demand - effectively unbounded via tiling.",
@@ -77,7 +101,7 @@ const KB: Viz[] = [
 type Msg = { role: "user" | "bot"; text: string; recs?: string[] };
 
 const INTRO =
-  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the fifteen visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
+  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the twenty-one visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
 
 function findViz(q: string): Viz[] {
   const s = q.toLowerCase();
@@ -119,7 +143,7 @@ function answer(q: string): Msg {
   // about / what is this
   if (/(what is|about|who|why|explain the app|purpose|how does this work|engine|ggplot|shiny react|two ways)/.test(s)) {
     return { role: "bot", text:
-      "Plotomics Live shows fifteen common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
+      "Plotomics Live shows twenty-one common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
   }
 
   // specific visualization info
@@ -130,7 +154,7 @@ function answer(q: string): Msg {
   }
 
   return { role: "bot", text:
-    "I can help with what this app is, any of the fifteen visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
+    "I can help with what this app is, any of the twenty-one visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
 }
 
 const CHIPS = [

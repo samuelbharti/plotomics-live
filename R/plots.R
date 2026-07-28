@@ -248,8 +248,11 @@ plot_igv_needle_gg <- function(gene = "TP53") {
   dir.create(.data_path("raw"), showWarnings = FALSE, recursive = TRUE)
   dest <- .data_path(file.path("raw", paste0("AF-", uniprot, ".pdb")))
   if (!file.exists(dest) || file.info(dest)$size == 0) {
-    url <- sprintf("https://alphafold.ebi.ac.uk/files/AF-%s-F1-model_v6.pdb", uniprot)
-    try(utils::download.file(url, dest, mode = "wb", quiet = TRUE), silent = TRUE)
+    # .af_urls() (R/data.R) resolves the current model version from the
+    # AlphaFold API rather than hardcoding one, which has already drifted once.
+    suppressWarnings(try(
+      utils::download.file(.af_urls(uniprot)$pdb, dest, mode = "wb", quiet = TRUE),
+      silent = TRUE))
   }
   dest
 }
@@ -284,6 +287,358 @@ plot_protein_plddt_gg <- function(uniprot = "P04637", residue = NULL) {
                                    linetype = "dashed", linewidth = 0.6)
   }
   gg_data_uri(p1, width = 900, height = 560)
+}
+
+# ---- oncoplot / OncoPrint -------------------------------------------------
+# Five aligned panels: the alteration grid, a per-sample burden barplot above,
+# a per-gene frequency barplot to the right, and two clinical strips below.
+# patchwork is used for exactly one reason: it merges gtable widths per column
+# and heights per row, so the burden bars land above their own sample columns
+# without us needing to know how wide the gene-label axis happened to render.
+# Nothing here re-derives the ordering; it plots biov_oncoplot()'s order, which
+# is the same order the React engine gets.
+plot_oncoplot_gg <- function(n_genes = 25L) {
+  if (!requireNamespace("patchwork", quietly = TRUE)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = "patchwork is required",
+                        colour = "#233038") + ggplot2::theme_void()))
+  }
+  o <- biov_oncoplot(n_genes = n_genes)
+  # Top gene at the top of the panel, so reverse for the discrete y scale.
+  glev <- rev(o$genes)
+  cls <- as.character(o$classes)
+  long <- data.frame(
+    gene = factor(rep(o$genes, times = o$ncols), levels = glev),
+    sample = factor(rep(o$samples, each = o$nrows), levels = o$samples),
+    code = as.integer(o$matrix))
+  long$cls <- factor(ifelse(long$code == 0L, NA_character_,
+                            cls[pmax(long$code, 1L)]), levels = cls)
+  cls_cols <- stats::setNames(as.character(o$classColors), cls)
+
+  bare_x <- ggplot2::theme(
+    axis.text.x = ggplot2::element_blank(),
+    axis.ticks.x = ggplot2::element_blank(),
+    panel.grid = ggplot2::element_blank())
+
+  p_main <- ggplot2::ggplot(long, ggplot2::aes(sample, gene)) +
+    ggplot2::geom_tile(fill = "#EFE9DC", width = 0.94, height = 0.82) +
+    ggplot2::geom_tile(data = long[!is.na(long$cls), ],
+                       ggplot2::aes(fill = cls), width = 0.94, height = 0.82) +
+    ggplot2::scale_fill_manual(values = cls_cols, drop = FALSE, name = NULL,
+                               na.translate = FALSE) +
+    ggplot2::labs(x = NULL, y = NULL) +
+    biov_theme(base_size = 10) + bare_x +
+    ggplot2::theme(axis.text.y = ggplot2::element_text(size = 7,
+                                                       face = "italic"))
+
+  p_tmb <- ggplot2::ggplot(
+      data.frame(sample = factor(o$samples, levels = o$samples), v = o$tmb),
+      ggplot2::aes(sample, v)) +
+    ggplot2::geom_col(fill = "#0E7175", width = 0.94) +
+    ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.05))) +
+    ggplot2::labs(x = NULL, y = "alterations") +
+    biov_theme(base_size = 9) + bare_x
+
+  p_freq <- ggplot2::ggplot(
+      data.frame(gene = factor(o$genes, levels = glev), v = o$freq),
+      ggplot2::aes(v, gene)) +
+    ggplot2::geom_col(fill = "#ED773C", width = 0.82) +
+    ggplot2::geom_text(ggplot2::aes(label = sprintf("%.0f%%", v)),
+                       hjust = -0.15, size = 2.4, colour = "#233038") +
+    ggplot2::scale_x_continuous(
+      expand = ggplot2::expansion(mult = c(0, 0.28))) +
+    ggplot2::labs(x = "% altered", y = NULL) +
+    biov_theme(base_size = 9) +
+    ggplot2::theme(axis.text.y = ggplot2::element_blank(),
+                   panel.grid = ggplot2::element_blank())
+
+  strip <- function(a) {
+    d <- data.frame(
+      sample = factor(o$samples, levels = o$samples),
+      lv = factor(ifelse(a$codes < 0L, NA_character_,
+                         as.character(a$levels)[a$codes + 1L]),
+                  levels = as.character(a$levels)),
+      row = a$name)
+    ggplot2::ggplot(d, ggplot2::aes(sample, row, fill = lv)) +
+      ggplot2::geom_tile(width = 0.94) +
+      ggplot2::scale_fill_manual(
+        values = stats::setNames(as.character(a$colors),
+                                 as.character(a$levels)),
+        name = a$name, na.value = "#EFE9DC") +
+      ggplot2::labs(x = NULL, y = NULL) +
+      biov_theme(base_size = 9) + bare_x +
+      ggplot2::theme(axis.text.y = ggplot2::element_text(size = 7))
+  }
+  strips <- lapply(o$annotations, strip)
+
+  # A = burden, B = grid, C = frequency, D/E = clinical strips. The "#" cells
+  # keep the right-hand column empty on every row except the grid's.
+  pw <- p_tmb + p_main + p_freq + strips[[1]] + strips[[2]] +
+    patchwork::plot_layout(
+      design = "A#\nBC\nD#\nE#",
+      widths = c(5.2, 1), heights = c(1.15, 6.4, 0.32, 0.32),
+      guides = "collect") +
+    # Without this patchwork paints an opaque background and the PNG stops
+    # blending into the panel the way every other classic view does.
+    patchwork::plot_annotation(theme = ggplot2::theme(
+      plot.background = ggplot2::element_rect(fill = "transparent",
+                                              colour = NA))) &
+    ggplot2::theme(legend.position = "bottom",
+                   legend.key.size = ggplot2::unit(9, "pt"),
+                   legend.text = ggplot2::element_text(size = 7),
+                   legend.title = ggplot2::element_text(size = 7))
+  gg_data_uri(pw, width = 1020, height = 780)
+}
+
+# ---- Visium spatial transcriptomics ----------------------------------------
+# annotation_raster reads the SAME PNG the browser fetches from www/, so there
+# is one image with two readers rather than two copies that can diverge.
+#
+# Two details worth keeping: the raster must be added as the FIRST layer (it is
+# an ordinary layer, not a below-everything annotation), and y is negated in the
+# data rather than using scale_y_reverse(), because a reversed scale flips the
+# raster's ymin/ymax mapping and silently draws the tissue upside down under
+# correctly-placed spots.
+plot_visium_gg <- function(gene = NULL, colour_by = "cluster") {
+  v <- biov_visium(gene, colour_by)
+  img_path <- file.path("www", v$image)
+  if (!requireNamespace("png", quietly = TRUE) || !file.exists(img_path)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = "tissue image unavailable",
+                        colour = "#233038") + ggplot2::theme_void(),
+      width = 760, height = 740))
+  }
+  ras <- grDevices::as.raster(png::readPNG(img_path))
+  W <- v$imgWidth; H <- v$imgHeight
+  d <- data.frame(x = v$x, yy = -v$y,
+                  cluster = factor(v$cluster, levels = as.character(v$clusterLevels)),
+                  expr = v$expr)
+
+  p <- ggplot2::ggplot(d, ggplot2::aes(x = x, y = yy)) +
+    ggplot2::annotation_raster(ras, xmin = 0, xmax = W, ymin = -H, ymax = 0,
+                               interpolate = TRUE)
+  if (identical(colour_by, "gene")) {
+    p <- p +
+      ggplot2::geom_point(ggplot2::aes(colour = expr), size = 1.15,
+                          alpha = 0.85) +
+      ggplot2::scale_colour_gradientn(colours = biov_gradient(),
+                                      name = sprintf("%s\nlog1p CP10K", v$gene),
+                                      limits = c(0, max(v$exprMax, 1e-6)))
+  } else {
+    p <- p +
+      ggplot2::geom_point(ggplot2::aes(colour = cluster), size = 1.15,
+                          alpha = 0.85) +
+      ggplot2::scale_colour_manual(
+        values = stats::setNames(as.character(v$clusterColors),
+                                 as.character(v$clusterLevels)),
+        name = NULL) +
+      ggplot2::guides(colour = ggplot2::guide_legend(
+        override.aes = list(size = 3)))
+  }
+  p <- p +
+    ggplot2::coord_fixed(xlim = c(0, W), ylim = c(-H, 0), expand = FALSE) +
+    ggplot2::labs(x = NULL, y = NULL) +
+    ggplot2::theme_void(base_size = 12) +
+    ggplot2::theme(
+      plot.background = ggplot2::element_rect(fill = "transparent", colour = NA),
+      legend.position = "right",
+      legend.text = ggplot2::element_text(colour = "#233038", size = 8),
+      legend.title = ggplot2::element_text(colour = "#233038", size = 9),
+      plot.margin = ggplot2::margin(6, 6, 6, 6))
+  gg_data_uri(p, width = 780, height = 700)
+}
+
+# ---- SBS96 mutational signature profile -----------------------------------
+# The six substitution blocks are drawn as a geom_rect banner over a continuous
+# x rather than with facet_grid. Faceting would give six panels with their own
+# strips and inter-panel gaps; the published layout is one continuous axis under
+# one banner, and hand-rolling the banner is the same move plot_treemap_gg makes
+# to avoid grob surgery.
+plot_sbs96_gg <- function(which = "catalogue") {
+  s <- biov_sbs96_profile(which)
+  df <- data.frame(i = seq_along(s$value), v = s$value,
+                   sub = factor(s$sub, levels = as.character(s$subLevels)),
+                   tri = s$trinuc)
+  top <- max(df$v)
+  hdr <- do.call(rbind, lapply(as.character(s$subLevels), function(k) {
+    ii <- range(which(s$sub == k))
+    data.frame(xmin = ii[1] - 0.5, xmax = ii[2] + 0.5, x = mean(ii), sub = k)
+  }))
+  hdr$sub <- factor(hdr$sub, levels = as.character(s$subLevels))
+  # Black and pale-grey blocks need opposite label colours to stay readable.
+  hdr$ink <- c("#FFFFFF", "#FFFFFF", "#FFFFFF", "#233038", "#233038", "#233038")
+  cols <- stats::setNames(as.character(s$subColors), as.character(s$subLevels))
+
+  p <- ggplot2::ggplot() +
+    ggplot2::geom_rect(data = hdr,
+                       ggplot2::aes(xmin = xmin, xmax = xmax,
+                                    ymin = top * 1.08, ymax = top * 1.19,
+                                    fill = sub)) +
+    ggplot2::geom_text(data = hdr,
+                       ggplot2::aes(x = x, y = top * 1.135, label = sub),
+                       colour = hdr$ink, size = 3.1, fontface = "bold") +
+    ggplot2::geom_col(data = df, ggplot2::aes(i, v, fill = sub), width = 0.62) +
+    ggplot2::scale_fill_manual(values = cols, guide = "none") +
+    ggplot2::scale_x_continuous(breaks = df$i, labels = df$tri,
+                                expand = c(0.005, 0)) +
+    ggplot2::scale_y_continuous(
+      expand = ggplot2::expansion(mult = c(0, 0.02)),
+      labels = if (s$isCatalogue) waiver() else scales::percent) +
+    ggplot2::coord_cartesian(ylim = c(0, top * 1.21), clip = "off") +
+    ggplot2::labs(x = NULL, y = s$yLabel,
+                  title = if (s$isCatalogue) "Observed cohort catalogue"
+                          else paste("De novo signature", s$profile)) +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1,
+                                          size = 4.2, family = "mono",
+                                          colour = "#6E7B72"),
+      panel.grid.major.x = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(10, 14, 4, 8))
+  gg_data_uri(p, width = 1020, height = 430)
+}
+
+# ---- protein domain lollipop ----------------------------------------------
+# One panel, two independent discrete scales: `fill` carries the domains and
+# `colour` the variant classes, which avoids needing ggnewscale. The domain and
+# PTM tracks live below zero on the same y axis, with clipping off so they can
+# sit outside the panel range. Labels come from biov_lollipop()'s labelRows, so
+# ggrepel labels exactly the variants the canvas labels.
+plot_lollipop_gg <- function(gene = "TP53") {
+  l <- biov_lollipop(gene)
+  if (is.null(l)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = paste("No variants for", gene),
+                        colour = "#233038") + ggplot2::theme_void()))
+  }
+  d <- data.frame(pos = l$position, count = l$count,
+                  cls = factor(l$class, levels = as.character(l$classes)),
+                  label = l$label, stringsAsFactors = FALSE)
+  top <- max(c(d$count, 1))
+  base <- -0.14 * top
+  hgt <- 0.11 * top
+  dm <- data.frame(name = factor(l$domainNames, levels = unique(l$domainNames)),
+                   start = l$domainStart, end = l$domainEnd)
+  dm$mid <- (dm$start + dm$end) / 2
+
+  p <- ggplot2::ggplot() +
+    # backbone
+    ggplot2::annotate("rect", xmin = 1, xmax = l$length,
+                      ymin = base + hgt * 0.32, ymax = base + hgt * 0.68,
+                      fill = "#E6DCC8") +
+    ggplot2::geom_rect(data = dm,
+                       ggplot2::aes(xmin = start, xmax = end,
+                                    ymin = base, ymax = base + hgt,
+                                    fill = name)) +
+    ggplot2::geom_segment(data = d,
+                          ggplot2::aes(x = pos, xend = pos, y = 0, yend = count),
+                          colour = "#93a1b8", linewidth = 0.4) +
+    ggplot2::geom_point(data = d,
+                        ggplot2::aes(x = pos, y = count, colour = cls,
+                                     size = count), alpha = 0.92) +
+    ggrepel::geom_text_repel(
+      data = d[l$labelRows, , drop = FALSE],
+      ggplot2::aes(x = pos, y = count, label = label),
+      size = 3, colour = "#233038", direction = "y", nudge_y = top * 0.07,
+      segment.colour = "#C9C1B1", segment.size = 0.25,
+      max.overlaps = Inf, seed = 3) +
+    ggplot2::scale_fill_manual(
+      values = stats::setNames(as.character(l$domainColors),
+                               levels(dm$name)), name = "Domain") +
+    ggplot2::scale_colour_manual(
+      values = stats::setNames(as.character(l$classColors),
+                               as.character(l$classes)),
+      drop = FALSE, name = "Variant") +
+    ggplot2::scale_size_area(max_size = 8, guide = "none") +
+    # Padded on both axes so a repelled label on the tallest stem, or on a
+    # variant near residue 1 or the C-terminus, has somewhere to go instead of
+    # riding the panel edge.
+    ggplot2::scale_x_continuous(limits = c(0, l$length),
+                                expand = ggplot2::expansion(mult = 0.045)) +
+    ggplot2::labs(x = sprintf("%s (%s) - amino-acid position", l$gene, l$uniprot),
+                  y = "samples") +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(),
+                   plot.margin = ggplot2::margin(14, 16, 6, 8))
+
+  if (length(l$ptmPosition)) {
+    ptm <- data.frame(pos = l$ptmPosition, type = l$ptmType)
+    p <- p +
+      ggplot2::geom_segment(data = ptm,
+                            ggplot2::aes(x = pos, xend = pos,
+                                         y = base - 0.30 * hgt,
+                                         yend = base - 0.05 * hgt),
+                            colour = "#8A9384", linewidth = 0.3) +
+      ggplot2::geom_point(data = ptm,
+                          ggplot2::aes(x = pos, y = base - 0.40 * hgt),
+                          shape = 17, size = 1.4, colour = "#6E7B72")
+  }
+  # clip = "off" lets the domain and PTM tracks sit below the panel range; the
+  # generous upper bound is headroom for the repelled labels.
+  p <- p + ggplot2::coord_cartesian(
+    ylim = c(base - 0.55 * hgt, top * 1.26), clip = "off")
+  gg_data_uri(p, width = 1000, height = 560)
+}
+
+# ---- AlphaFold predicted aligned error (PAE) ------------------------------
+# Same binned matrix the React engine gets, on the same LTC ramp with the same
+# limits, so the two renderings are the same picture in two engines.
+plot_pae_gg <- function(uniprot = "P04637", residue = NULL) {
+  pae <- biov_pae(uniprot)
+  if (is.null(pae)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = paste("Could not fetch PAE for", uniprot),
+                        colour = "#233038") + ggplot2::theme_void()))
+  }
+  m <- pae$matrix
+  pos <- as.integer(pae$rowLabels)
+  # as.numeric() unrolls column-major, so the row index cycles fastest.
+  long <- data.frame(
+    scored  = rep(pos, each = nrow(m)),
+    aligned = rep(pos, times = ncol(m)),
+    pae     = as.numeric(m))
+  p1 <- ggplot2::ggplot(long, ggplot2::aes(x = scored, y = aligned, fill = pae)) +
+    ggplot2::geom_raster() +
+    ggplot2::scale_fill_gradientn(colours = biov_gradient(), name = "PAE (Å)",
+                                  limits = c(0, pae$maxPae)) +
+    ggplot2::scale_y_reverse(expand = c(0, 0)) +
+    ggplot2::scale_x_continuous(expand = c(0, 0)) +
+    ggplot2::coord_equal() +
+    ggplot2::labs(x = "scored residue", y = "aligned residue",
+                  title = paste("AlphaFold PAE", uniprot)) +
+    biov_theme(base_size = 12)
+  if (!is.null(residue) && !is.na(residue)) {
+    p1 <- p1 +
+      ggplot2::geom_vline(xintercept = residue, colour = "#C63F3E",
+                          linetype = "dashed", linewidth = 0.4) +
+      ggplot2::geom_hline(yintercept = residue, colour = "#C63F3E",
+                          linetype = "dashed", linewidth = 0.4)
+  }
+  gg_data_uri(p1, width = 700, height = 680)
+}
+
+# One row of the PAE matrix: how well the rest of the chain is placed relative
+# to the selected residue. The React twin of the N-d array's pixel spectrum.
+plot_pae_profile_gg <- function(uniprot = "P04637", residue = NULL) {
+  pae <- biov_pae(uniprot)
+  if (is.null(pae)) {
+    return(gg_data_uri(ggplot2::ggplot() + ggplot2::theme_void(),
+                       width = 640, height = 300))
+  }
+  pos <- as.integer(pae$rowLabels)
+  res <- if (is.null(residue) || is.na(residue)) pos[1] else residue
+  i <- which.min(abs(pos - res))
+  df <- data.frame(residue = pos, pae = pae$matrix[i, ])
+  p1 <- ggplot2::ggplot(df, ggplot2::aes(x = residue, y = pae)) +
+    ggplot2::geom_area(fill = "#8BC8CB", alpha = 0.55) +
+    ggplot2::geom_line(colour = "#0E7175", linewidth = 0.5) +
+    ggplot2::geom_vline(xintercept = pos[i], colour = "#C63F3E",
+                        linetype = "dashed", linewidth = 0.4) +
+    ggplot2::ylim(0, pae$maxPae) +
+    ggplot2::labs(x = "residue", y = "PAE (Å)",
+                  title = sprintf("aligned on residue %d", pos[i])) +
+    biov_theme(base_size = 12)
+  gg_data_uri(p1, width = 640, height = 300)
 }
 
 # ---- Manhattan plot (GWAS) ------------------------------------------------
@@ -407,6 +762,44 @@ plot_umap_gg <- function(colour_by = "cell_type") {
     biov_theme(base_size = 12) +
     ggplot2::theme(legend.position = "right", legend.text = ggplot2::element_text(size = 7))
   uri <- gg_data_uri(p1, width = 900, height = 640)
+  attr(uri, "n") <- n
+  attr(uri, "secs") <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 2)
+  uri
+}
+
+# ---- Xenium single-molecule map (same subsample contrast as the UMAP page) --
+# Levels and colours come from www/data/xenium_meta.json, the same sidecar the
+# React client reads, so the legend order and the palette cannot drift between
+# the two engines.
+plot_xenium_gg <- function(colour_by = "class") {
+  df <- biov_xenium_sample()
+  meta <- biov_xenium_meta()
+  fld <- meta$fields[[colour_by]]
+  if (is.null(fld)) {
+    colour_by <- "class"
+    fld <- meta$fields[["class"]]
+  }
+  df$grp <- factor(df[[colour_by]], levels = fld$levels)
+  n <- nrow(df)
+  t0 <- Sys.time()
+  # Tissue coordinates are in micrometres and the section is not square, so the
+  # aspect ratio has to be fixed or the anatomy is a lie. y is flipped to match
+  # the image convention the instrument writes.
+  p1 <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, colour = grp)) +
+    ggplot2::geom_point(size = 0.3, alpha = 0.55) +
+    ggplot2::scale_colour_manual(values = stats::setNames(fld$colors, fld$levels),
+                                 drop = FALSE, name = NULL) +
+    ggplot2::scale_y_reverse() +
+    ggplot2::coord_fixed() +
+    ggplot2::guides(colour = ggplot2::guide_legend(
+      override.aes = list(size = 2.4, alpha = 1))) +
+    ggplot2::labs(x = expression(x ~ (mu * m)), y = expression(y ~ (mu * m))) +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(legend.position = "right",
+                   legend.text = ggplot2::element_text(size = 8))
+  # coord_fixed on a 1.37:1 section, so the frame is sized to match rather than
+  # leaving a band of empty panel above and below the tissue.
+  uri <- gg_data_uri(p1, width = 960, height = 620)
   attr(uri, "n") <- n
   attr(uri, "secs") <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 2)
   uri

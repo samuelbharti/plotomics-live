@@ -15,6 +15,29 @@ biov_status_colours <- function() {
   c(Down = "#0E7175", NS = "#C9C1B1", Up = "#C63F3E")
 }
 
+# Alteration classes for the oncoplot, mapped onto LTC hues. Order matters: it
+# fixes both the legend order and which colour each class gets, and it is the
+# same order the React side receives, so the two engines agree.
+biov_variant_colours <- function() {
+  c("Missense"       = "#0E7175",
+    "Truncating"     = "#233038",
+    "Frameshift"     = "#C63F3E",
+    "Splice"         = "#ED773C",
+    "In-frame indel" = "#E4A25B",
+    "Amplification"  = "#9E3F71",
+    "Deep deletion"  = "#808BC5",
+    "Multi-hit"      = "#245E55",
+    "Other"          = "#9BB29E")
+}
+
+# The six substitution-class colours used by every published SBS96 figure.
+# Deliberately NOT the LTC palette: these hexes are the convention, and
+# recolouring them makes the plot unreadable to anyone who knows the format.
+biov_sbs_colours <- function() {
+  c("C>A" = "#03BCEE", "C>G" = "#010101", "C>T" = "#E32926",
+    "T>A" = "#CAC9C9", "T>C" = "#A1CE63", "T>G" = "#EBC6C4")
+}
+
 # Sequential gradient for the heatmap - LTC "heatmap0" (earthy viridis-like).
 biov_gradient <- function() {
   c("#013D5A", "#0A9396", "#94D2BD", "#E9D8A6", "#EE9B00", "#CA6702", "#AE2012")

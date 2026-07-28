@@ -32,6 +32,14 @@ server <- function(input, output, session) {
   igv_gene <- reactive(if (is.null(input$igv_gene)) "TP53" else input$igv_gene)
   prot_acc <- reactive(if (is.null(input$protein_uniprot)) "P04637" else input$protein_uniprot)
   prot_res <- reactive(input$protein_residue)
+  onco_n <- reactive(if (is.null(input$onco_genes)) 25L else as.integer(input$onco_genes))
+  lolli_gene <- reactive(if (is.null(input$lolli_gene)) "TP53" else input$lolli_gene)
+  sbs_which <- reactive(if (is.null(input$sbs_profile)) "catalogue" else input$sbs_profile)
+  vis_gene <- reactive(if (is.null(input$visium_gene)) "ERBB2" else input$visium_gene)
+  vis_by <- reactive(if (is.null(input$visium_by)) "cluster" else input$visium_by)
+  xen_by <- reactive(if (is.null(input$xenium_color)) "class" else input$xenium_color)
+  pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
+  pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
   # ---- VOLCANO -------------------------------------------------------------
   output$volcano_data <- reactive_output({
@@ -119,6 +127,14 @@ server <- function(input, output, session) {
     list(uri = unclass(uri), n = attr(uri, "n"), secs = attr(uri, "secs"))
   })
 
+  # ---- XENIUM --------------------------------------------------------------
+  # Same split as the UMAP page: the React side streams the blobs itself, the
+  # server only renders the capped ggplot2 counterpart.
+  output$xenium_png <- reactive_output({
+    uri <- plot_xenium_gg(colour_by = xen_by())
+    list(uri = unclass(uri), n = attr(uri, "n"), secs = attr(uri, "secs"))
+  })
+
   # ---- MANHATTAN + QQ (GWAS) -----------------------------------------------
   output$gwas_data <- reactive_output({
     g <- biov_gwas()
@@ -192,6 +208,126 @@ server <- function(input, output, session) {
   # ---- PROTEIN (classic pLDDT profile; React side is 3Dmol) ----------------
   output$protein_plddt_png <- reactive_output({
     plot_protein_plddt_gg(prot_acc(), prot_res())
+  })
+
+  # ---- ONCOPLOT ------------------------------------------------------------
+  # The memo sort, per-sample burden and per-gene frequency are all computed in
+  # biov_oncoplot() and shipped as-is. The React component is a renderer: it
+  # indexes, it does not sort or aggregate, so the two engines cannot drift
+  # apart on a tie.
+  output$oncoplot_data <- reactive_output({
+    o <- biov_oncoplot(n_genes = onco_n())
+    list(
+      columns = list(codes = o$codes, tmb = o$tmb, freq = o$freq),
+      meta = list(nrows = o$nrows, ncols = o$ncols,
+                  genes = o$genes, samples = o$samples,
+                  classes = o$classes, classColors = o$classColors,
+                  annotations = o$annotations)
+    )
+  })
+  output$oncoplot_png <- reactive_output({ plot_oncoplot_gg(n_genes = onco_n()) })
+  output$oncoplot_stats <- reactive_output({
+    o <- biov_oncoplot(n_genes = onco_n())
+    list(genes = o$nrows, samples = o$ncols, cohort = o$cohort,
+         altered = o$altered, events = sum(o$tmb),
+         medianTmb = stats::median(o$tmb))
+  })
+
+  # ---- VISIUM spatial transcriptomics --------------------------------------
+  # The selected gene's per-spot vector is computed here and sent, so the canvas
+  # never derives expression itself and the two engines cannot disagree.
+  output$visium_data <- reactive_output({
+    v <- biov_visium(vis_gene(), vis_by())
+    colour <- if (identical(vis_by(), "gene")) v$expr else v$cluster
+    list(
+      columns = list(x = v$x, y = v$y, color = colour, label = v$barcode),
+      meta = list(image = v$image, imgWidth = v$imgWidth,
+                  imgHeight = v$imgHeight, spotDiameter = v$spotDiameter,
+                  levels = if (identical(vis_by(), "gene")) NULL else v$clusterLevels,
+                  colors = if (identical(vis_by(), "gene")) NULL else v$clusterColors)
+    )
+  })
+  output$visium_png <- reactive_output({ plot_visium_gg(vis_gene(), vis_by()) })
+  output$visium_stats <- reactive_output({
+    v <- biov_visium(vis_gene(), vis_by())
+    list(spots = v$nSpots, genes = v$nGenes,
+         clusters = length(v$clusterLevels), gene = v$gene,
+         geneList = v$genes, exprMax = round(v$exprMax, 2),
+         dataset = v$dataset)
+  })
+
+  # ---- MUTATIONAL SIGNATURES (SBS96) ---------------------------------------
+  output$sbs_data <- reactive_output({
+    s <- biov_sbs96_profile(sbs_which())
+    list(
+      columns = list(value = s$value, group = s$sub, label = s$trinuc),
+      meta = list(groups = s$subLevels, groupColors = s$subColors,
+                  title = if (s$isCatalogue) "Observed cohort catalogue"
+                          else paste("De novo signature", s$profile))
+    )
+  })
+  output$sbs_png <- reactive_output({ plot_sbs96_gg(sbs_which()) })
+  output$sbs_stats <- reactive_output({
+    s <- biov_sbs96_profile(sbs_which())
+    list(profile = s$profile, choices = s$choices, yLabel = s$yLabel,
+         isCatalogue = s$isCatalogue, tumours = s$nTumours, snv = s$nSnv,
+         share = s$share)
+  })
+
+  # ---- PROTEIN DOMAIN LOLLIPOP ---------------------------------------------
+  # labelIndex is resolved in biov_lollipop() and sent to the client, so the
+  # canvas and ggrepel label the same variants rather than each picking a top-N.
+  output$lollipop_genes <- reactive_output({ I(biov_lollipop_genes()) })
+  output$lollipop_data <- reactive_output({
+    l <- biov_lollipop(lolli_gene())
+    if (is.null(l)) return(NULL)
+    list(
+      columns = list(position = l$position, count = l$count,
+                     class = l$class, label = l$label),
+      meta = list(length = l$length, gene = l$gene, uniprot = l$uniprot,
+                  classes = l$classes, classColors = l$classColors,
+                  domains = l$domains, domainColors = l$domainColors,
+                  ptms = l$ptms, labelIndex = l$labelIndex)
+    )
+  })
+  output$lollipop_png <- reactive_output({ plot_lollipop_gg(lolli_gene()) })
+  output$lollipop_stats <- reactive_output({
+    l <- biov_lollipop(lolli_gene())
+    if (is.null(l)) return(NULL)
+    list(gene = l$gene, uniprot = l$uniprot, length = l$length,
+         variants = l$nVariants, samples = l$nSamples,
+         domains = length(l$domains), ptms = length(l$ptms))
+  })
+
+  # ---- ALPHAFOLD PAE -------------------------------------------------------
+  # Both engines read the SAME binned matrix from biov_pae(); the client never
+  # talks to AlphaFold directly, so it cannot end up plotting the unbinned one.
+  output$pae_data <- reactive_output({
+    p <- biov_pae(pae_acc())
+    if (is.null(p)) return(NULL)
+    list(columns = list(values = p$values),
+         meta = list(nrows = p$nrows, ncols = p$ncols,
+                     rowLabels = p$rowLabels, colLabels = p$colLabels))
+  })
+  output$pae_profile_data <- reactive_output({
+    p <- biov_pae(pae_acc())
+    if (is.null(p)) return(NULL)
+    pos <- as.integer(p$rowLabels)
+    res <- pae_res()
+    i <- if (is.null(res) || is.na(res)) 1L else which.min(abs(pos - res))
+    list(columns = list(values = unname(p$matrix[i, ])),
+         meta = list(residue = pos[i], maxPae = p$maxPae))
+  })
+  output$pae_png <- reactive_output({ plot_pae_gg(pae_acc(), pae_res()) })
+  output$pae_profile_png <- reactive_output({
+    plot_pae_profile_gg(pae_acc(), pae_res())
+  })
+  output$pae_stats <- reactive_output({
+    p <- biov_pae(pae_acc())
+    if (is.null(p)) return(list(ok = FALSE))
+    list(ok = TRUE, residues = p$residues, binned = p$nrows, bin = p$bin,
+         cells = p$residues * p$residues, maxPae = p$maxPae,
+         mean = round(mean(p$matrix), 2))
   })
 }
 
