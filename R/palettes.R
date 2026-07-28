@@ -30,6 +30,14 @@ biov_variant_colours <- function() {
     "Other"          = "#9BB29E")
 }
 
+# The six substitution-class colours used by every published SBS96 figure.
+# Deliberately NOT the LTC palette: these hexes are the convention, and
+# recolouring them makes the plot unreadable to anyone who knows the format.
+biov_sbs_colours <- function() {
+  c("C>A" = "#03BCEE", "C>G" = "#010101", "C>T" = "#E32926",
+    "T>A" = "#CAC9C9", "T>C" = "#A1CE63", "T>G" = "#EBC6C4")
+}
+
 # Sequential gradient for the heatmap - LTC "heatmap0" (earthy viridis-like).
 biov_gradient <- function() {
   c("#013D5A", "#0A9396", "#94D2BD", "#E9D8A6", "#EE9B00", "#CA6702", "#AE2012")

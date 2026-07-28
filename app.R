@@ -34,6 +34,7 @@ server <- function(input, output, session) {
   prot_res <- reactive(input$protein_residue)
   onco_n <- reactive(if (is.null(input$onco_genes)) 25L else as.integer(input$onco_genes))
   lolli_gene <- reactive(if (is.null(input$lolli_gene)) "TP53" else input$lolli_gene)
+  sbs_which <- reactive(if (is.null(input$sbs_profile)) "catalogue" else input$sbs_profile)
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
@@ -219,6 +220,24 @@ server <- function(input, output, session) {
     list(genes = o$nrows, samples = o$ncols, cohort = o$cohort,
          altered = o$altered, events = sum(o$tmb),
          medianTmb = stats::median(o$tmb))
+  })
+
+  # ---- MUTATIONAL SIGNATURES (SBS96) ---------------------------------------
+  output$sbs_data <- reactive_output({
+    s <- biov_sbs96_profile(sbs_which())
+    list(
+      columns = list(value = s$value, group = s$sub, label = s$trinuc),
+      meta = list(groups = s$subLevels, groupColors = s$subColors,
+                  title = if (s$isCatalogue) "Observed cohort catalogue"
+                          else paste("De novo signature", s$profile))
+    )
+  })
+  output$sbs_png <- reactive_output({ plot_sbs96_gg(sbs_which()) })
+  output$sbs_stats <- reactive_output({
+    s <- biov_sbs96_profile(sbs_which())
+    list(profile = s$profile, choices = s$choices, yLabel = s$yLabel,
+         isCatalogue = s$isCatalogue, tumours = s$nTumours, snv = s$nSnv,
+         share = s$share)
   })
 
   # ---- PROTEIN DOMAIN LOLLIPOP ---------------------------------------------

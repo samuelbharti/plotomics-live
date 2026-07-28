@@ -390,6 +390,56 @@ plot_oncoplot_gg <- function(n_genes = 25L) {
   gg_data_uri(pw, width = 1020, height = 780)
 }
 
+# ---- SBS96 mutational signature profile -----------------------------------
+# The six substitution blocks are drawn as a geom_rect banner over a continuous
+# x rather than with facet_grid. Faceting would give six panels with their own
+# strips and inter-panel gaps; the published layout is one continuous axis under
+# one banner, and hand-rolling the banner is the same move plot_treemap_gg makes
+# to avoid grob surgery.
+plot_sbs96_gg <- function(which = "catalogue") {
+  s <- biov_sbs96_profile(which)
+  df <- data.frame(i = seq_along(s$value), v = s$value,
+                   sub = factor(s$sub, levels = as.character(s$subLevels)),
+                   tri = s$trinuc)
+  top <- max(df$v)
+  hdr <- do.call(rbind, lapply(as.character(s$subLevels), function(k) {
+    ii <- range(which(s$sub == k))
+    data.frame(xmin = ii[1] - 0.5, xmax = ii[2] + 0.5, x = mean(ii), sub = k)
+  }))
+  hdr$sub <- factor(hdr$sub, levels = as.character(s$subLevels))
+  # Black and pale-grey blocks need opposite label colours to stay readable.
+  hdr$ink <- c("#FFFFFF", "#FFFFFF", "#FFFFFF", "#233038", "#233038", "#233038")
+  cols <- stats::setNames(as.character(s$subColors), as.character(s$subLevels))
+
+  p <- ggplot2::ggplot() +
+    ggplot2::geom_rect(data = hdr,
+                       ggplot2::aes(xmin = xmin, xmax = xmax,
+                                    ymin = top * 1.08, ymax = top * 1.19,
+                                    fill = sub)) +
+    ggplot2::geom_text(data = hdr,
+                       ggplot2::aes(x = x, y = top * 1.135, label = sub),
+                       colour = hdr$ink, size = 3.1, fontface = "bold") +
+    ggplot2::geom_col(data = df, ggplot2::aes(i, v, fill = sub), width = 0.62) +
+    ggplot2::scale_fill_manual(values = cols, guide = "none") +
+    ggplot2::scale_x_continuous(breaks = df$i, labels = df$tri,
+                                expand = c(0.005, 0)) +
+    ggplot2::scale_y_continuous(
+      expand = ggplot2::expansion(mult = c(0, 0.02)),
+      labels = if (s$isCatalogue) waiver() else scales::percent) +
+    ggplot2::coord_cartesian(ylim = c(0, top * 1.21), clip = "off") +
+    ggplot2::labs(x = NULL, y = s$yLabel,
+                  title = if (s$isCatalogue) "Observed cohort catalogue"
+                          else paste("De novo signature", s$profile)) +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1,
+                                          size = 4.2, family = "mono",
+                                          colour = "#6E7B72"),
+      panel.grid.major.x = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(10, 14, 4, 8))
+  gg_data_uri(p, width = 1020, height = 430)
+}
+
 # ---- protein domain lollipop ----------------------------------------------
 # One panel, two independent discrete scales: `fill` carries the domains and
 # `colour` the variant classes, which avoids needing ggnewscale. The domain and

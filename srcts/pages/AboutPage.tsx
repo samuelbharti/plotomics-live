@@ -78,6 +78,19 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Mutational signatures (SBS96)",
+    what: "The 96 trinucleotide contexts under the six substitution blocks. The observed catalogue is 21,330 SNVs across 120 TCGA breast tumours; the four profiles below it were extracted de novo from those spectra by NMF. Two come out as the C>T and C>G arms of APOBEC and one as clock-like CpG deamination, recovered from the data rather than matched to a catalogue.",
+    react: "plotomics profile: 96 canvas bars under a six-block banner, with the group colours that every published signature figure uses.",
+    ggplot: "geom_col over a continuous x with the banner hand-rolled as a geom_rect layer, rather than facet_grid, which would introduce six panel strips and inter-panel gaps the convention does not have.",
+    data: "GDC open-access TCGA-BRCA Masked Somatic Mutation MAFs (250 files, no account needed). GDC MAFs carry a CONTEXT column with an 11-base reference window, so the trinucleotide context is a substring and no BSgenome package is required. Signatures are fitted with seeded Lee-and-Seung multiplicative-update NMF at rank 4, reconstructing the catalogue at cosine similarity 0.999. These are NOT COSMIC reference signatures: COSMIC's terms (clause 4.7) forbid redistributing any part of COSMIC, so nothing from it is shipped and the profiles are named BRCA-A to BRCA-D rather than borrowing SBS numbers.",
+    refs: [
+      { label: "Alexandrov et al., Nature 500:415–421 (2013) - signatures of mutational processes", href: "https://doi.org/10.1038/nature12477" },
+      { label: "Alexandrov et al., Nature 578:94–101 (2020) - the repertoire of mutational signatures", href: "https://doi.org/10.1038/s41586-020-1943-3" },
+      { label: "Lee & Seung, Nature 401:788–791 (1999) - non-negative matrix factorization", href: "https://doi.org/10.1038/44565" },
+      { label: "NCI Genomic Data Commons", href: "https://gdc.cancer.gov" },
+    ],
+  },
+  {
     title: "Domain lollipop",
     what: "Where the TCGA-BRCA variants land on six driver proteins, drawn over their Pfam domain architecture with UniProt modification sites underneath. The contrast between genes is the point: all five of TP53's top hotspots fall inside its DNA-binding domain, while CDH1 is truncated across its cadherin repeats.",
     react: "plotomics lollipop: backbone, domain rectangles, stems and PTM ticks on a canvas, with labels, axis and legend as an SVG overlay. Head area scales with recurrence.",
@@ -199,7 +212,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across eighteen common biological visualizations.
+            compare the two approaches across nineteen common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

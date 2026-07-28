@@ -523,6 +523,63 @@ biov_oncoplot <- local({
   }
 })
 
+# ---- SBS96 mutational signatures ------------------------------------------
+# The observed 96-context catalogue for a TCGA-BRCA cohort plus signatures
+# extracted de novo from it (see data/prep/prepare-sbs96.R). These are NOT
+# COSMIC reference signatures: COSMIC's terms forbid redistribution, so the
+# page ships real spectra computed from open GDC data and names them
+# accordingly. The resemblance to known processes is described in the copy, not
+# asserted by the labels.
+biov_sbs96 <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cat_df <- utils::read.csv(.data_path("sbs96_catalogue.csv"),
+                                stringsAsFactors = FALSE)
+      sig_df <- utils::read.csv(.data_path("sbs96_signatures.csv"),
+                                stringsAsFactors = FALSE, check.names = FALSE)
+      exp_df <- utils::read.csv(.data_path("sbs96_exposures.csv"),
+                                stringsAsFactors = FALSE, check.names = FALSE)
+      sig_names <- setdiff(names(sig_df), c("context", "trinuc", "sub"))
+      cache <<- list(
+        contexts = cat_df$context, trinuc = cat_df$trinuc, sub = cat_df$sub,
+        counts = cat_df$count,
+        signatures = sig_names,
+        sig = sig_df[sig_names],
+        exposures = exp_df,
+        subLevels = names(biov_sbs_colours()),
+        subColors = unname(biov_sbs_colours()),
+        nTumours = nrow(exp_df),
+        nSnv = sum(cat_df$count))
+    }
+    cache
+  }
+})
+
+# One profile: either the observed cohort catalogue or a de novo signature.
+# `which` is "catalogue" or a signature name.
+biov_sbs96_profile <- function(which = "catalogue") {
+  s <- biov_sbs96()
+  if (identical(which, "catalogue")) {
+    v <- as.numeric(s$counts)
+    lab <- "SNVs"
+  } else {
+    if (!which %in% s$signatures) which <- s$signatures[1]
+    v <- as.numeric(s$sig[[which]])
+    lab <- "share of signature"
+  }
+  list(profile = which, value = v, contexts = s$contexts,
+       trinuc = s$trinuc, sub = s$sub,
+       subLevels = I(s$subLevels), subColors = I(s$subColors),
+       choices = I(c("catalogue", s$signatures)),
+       yLabel = lab, isCatalogue = identical(which, "catalogue"),
+       total = sum(v), nTumours = s$nTumours, nSnv = s$nSnv,
+       # Share of cohort mutations each signature accounts for.
+       share = if (identical(which, "catalogue")) NA_real_ else
+         round(100 * sum(s$exposures[[which]]) /
+                 sum(as.matrix(s$exposures[s$signatures])), 1))
+}
+
 # ---- protein domain lollipop ----------------------------------------------
 # Three real layers over one protein: mutation stems from the same cBioPortal
 # TCGA-BRCA fetch the oncoplot uses, Pfam domain rectangles from InterPro, and

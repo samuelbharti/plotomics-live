@@ -1,6 +1,6 @@
 # Plotomics Live — biological visualizations, two ways
 
-A Shiny **React** (TSX) app that shows eighteen biological-data visualizations, each
+A Shiny **React** (TSX) app that shows nineteen biological-data visualizations, each
 rendered **two ways** so you can compare them side by side via an engine toggle:
 
 - **Shiny React** — an interactive, GPU-accelerated TSX component (plotomics /
@@ -21,6 +21,7 @@ always visualize the *same* server-side computation.
 | Clustered heatmap | plotomics `clustermap` (in-browser clustering + dendrograms) | base-R `heatmap()` |
 | Mutation treemap | plotomics `treemap` | hand-rolled ggplot2 treemap |
 | Oncoplot (OncoPrint) | plotomics `oncoplot` (canvas grid + marginal bars + clinical strips) | five ggplot2 panels aligned with `patchwork` |
+| Mutational signatures (SBS96) | plotomics `profile` (96 canvas bars + six-block banner) | ggplot2 `geom_col` + hand-rolled banner |
 | Hi-C contact matrix | plotomics `heatmap` (log contacts) | ggplot2 `geom_raster` |
 | Tahoe-100M perturbation | drug×cell-line coverage clustermap **+ a 380k-cell cell-cycle scatter** (real Tahoe data) | ggplot2 `geom_tile` |
 | Gene network | plotomics `network` (sigma/WebGL, ~1.5k nodes / 7.4k edges) | igraph layout + ggplot2 |
