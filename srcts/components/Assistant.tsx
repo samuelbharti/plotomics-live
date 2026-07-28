@@ -36,6 +36,10 @@ const KB: Viz[] = [
     what: "a gene x sample grid of alteration classes with per-sample burden, per-gene frequency and clinical strips.",
     capacity: "hundreds of genes x thousands of samples; the grid is canvas-drawn, so cohort scale is not a problem.",
     pick: "you have per-sample somatic alterations (a MAF, or mutations plus copy number) and want the cohort landscape." },
+  { route: "/visium", name: "Visium spatial transcriptomics", kw: ["spatial", "visium", "10x", "tissue", "histology", "h&e", "he", "slide", "section", "spot", "in situ", "spatial transcriptomics", "microenvironment", "niche"],
+    what: "capture spots at their tissue coordinates over the H&E section, coloured by cluster or by a gene.",
+    capacity: "thousands of spots here; the canvas layer handles tens of thousands, and Visium HD bins would go the same way.",
+    pick: "your measurements have real coordinates on a tissue section and the anatomy is part of the result." },
   { route: "/signatures", name: "Mutational signatures (SBS96)", kw: ["signature", "sbs", "sbs96", "mutational signature", "trinucleotide", "context", "apobec", "clock-like", "cosmic", "nmf", "spectrum", "substitution", "kataegis", "deamination"],
     what: "the 96 trinucleotide contexts under the six substitution blocks, for an observed catalogue or a de novo signature.",
     capacity: "96 bars here; the profile component takes a few thousand bins if you need a binned genomic profile.",
@@ -93,7 +97,7 @@ const KB: Viz[] = [
 type Msg = { role: "user" | "bot"; text: string; recs?: string[] };
 
 const INTRO =
-  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the nineteen visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
+  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the twenty visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
 
 function findViz(q: string): Viz[] {
   const s = q.toLowerCase();
@@ -135,7 +139,7 @@ function answer(q: string): Msg {
   // about / what is this
   if (/(what is|about|who|why|explain the app|purpose|how does this work|engine|ggplot|shiny react|two ways)/.test(s)) {
     return { role: "bot", text:
-      "Plotomics Live shows nineteen common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
+      "Plotomics Live shows twenty common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
   }
 
   // specific visualization info
@@ -146,7 +150,7 @@ function answer(q: string): Msg {
   }
 
   return { role: "bot", text:
-    "I can help with what this app is, any of the nineteen visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
+    "I can help with what this app is, any of the twenty visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
 }
 
 const CHIPS = [

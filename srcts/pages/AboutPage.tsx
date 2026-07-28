@@ -78,6 +78,17 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Visium spatial transcriptomics",
+    what: "3,798 Visium capture spots on a human breast cancer section, at their real slide coordinates over the H&E image, coloured by graph-based cluster or by a gene from a 60-gene panel.",
+    react: "plotomics spatial: the tissue image and the spots share one contain-fit transform computed once, so histology and overlay cannot drift apart on resize or full-screen. A spot-opacity control fades the overlay to read the histology underneath.",
+    ggplot: "annotation_raster of the same PNG the browser fetches, with geom_point on top and coord_fixed. y is negated in the data rather than using scale_y_reverse, which would flip the raster's mapping and draw the tissue upside down under correctly-placed spots.",
+    data: "10x Genomics public dataset, Human Breast Cancer (Block A Section 1), Visium Spatial Gene Expression v1.1.0, CC BY 4.0. Spot coordinates and the low-res H&E come from the spatial bundle with the published scale factor applied; clusters and the marker panel come from 10x's own graph-based clustering and differential expression, so the cluster assignment is the dataset's rather than ours. Expression is log1p CP10K computed against each spot's total counts. The selected gene's per-spot vector is computed server-side and sent, so the two engines colour from one computation.",
+    refs: [
+      { label: "10x Genomics - Human Breast Cancer (Block A Section 1)", href: "https://www.10xgenomics.com/datasets/human-breast-cancer-block-a-section-1-1-standard" },
+      { label: "Ståhl et al., Science 353:78–82 (2016) - spatially resolved transcriptomics", href: "https://doi.org/10.1126/science.aaf2403" },
+    ],
+  },
+  {
     title: "Mutational signatures (SBS96)",
     what: "The 96 trinucleotide contexts under the six substitution blocks. The observed catalogue is 21,330 SNVs across 120 TCGA breast tumours; the four profiles below it were extracted de novo from those spectra by NMF. Two come out as the C>T and C>G arms of APOBEC and one as clock-like CpG deamination, recovered from the data rather than matched to a catalogue.",
     react: "plotomics profile: 96 canvas bars under a six-block banner, with the group colours that every published signature figure uses.",
@@ -212,7 +223,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across nineteen common biological visualizations.
+            compare the two approaches across twenty common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

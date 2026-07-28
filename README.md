@@ -1,6 +1,6 @@
 # Plotomics Live — biological visualizations, two ways
 
-A Shiny **React** (TSX) app that shows nineteen biological-data visualizations, each
+A Shiny **React** (TSX) app that shows twenty biological-data visualizations, each
 rendered **two ways** so you can compare them side by side via an engine toggle:
 
 - **Shiny React** — an interactive, GPU-accelerated TSX component (plotomics /
@@ -24,6 +24,7 @@ always visualize the *same* server-side computation.
 | Mutational signatures (SBS96) | plotomics `profile` (96 canvas bars + six-block banner) | ggplot2 `geom_col` + hand-rolled banner |
 | Hi-C contact matrix | plotomics `heatmap` (log contacts) | ggplot2 `geom_raster` |
 | Tahoe-100M perturbation | drug×cell-line coverage clustermap **+ a 380k-cell cell-cycle scatter** (real Tahoe data) | ggplot2 `geom_tile` |
+| Visium spatial transcriptomics | plotomics `spatial` (H&E underlay + canvas spots, one shared transform) | ggplot2 `annotation_raster` + `geom_point` |
 | Gene network | plotomics `network` (sigma/WebGL, ~1.5k nodes / 7.4k edges) | igraph layout + ggplot2 |
 | Genome browser (IGV) | igv.js (hg19 + variant track) | ggplot2 variant needle plot |
 | Protein structure | 3Dmol.js (AlphaFold, coloured by pLDDT) | ggplot2 per-residue pLDDT profile |

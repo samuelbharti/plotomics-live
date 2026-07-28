@@ -390,6 +390,64 @@ plot_oncoplot_gg <- function(n_genes = 25L) {
   gg_data_uri(pw, width = 1020, height = 780)
 }
 
+# ---- Visium spatial transcriptomics ----------------------------------------
+# annotation_raster reads the SAME PNG the browser fetches from www/, so there
+# is one image with two readers rather than two copies that can diverge.
+#
+# Two details worth keeping: the raster must be added as the FIRST layer (it is
+# an ordinary layer, not a below-everything annotation), and y is negated in the
+# data rather than using scale_y_reverse(), because a reversed scale flips the
+# raster's ymin/ymax mapping and silently draws the tissue upside down under
+# correctly-placed spots.
+plot_visium_gg <- function(gene = NULL, colour_by = "cluster") {
+  v <- biov_visium(gene, colour_by)
+  img_path <- file.path("www", v$image)
+  if (!requireNamespace("png", quietly = TRUE) || !file.exists(img_path)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = "tissue image unavailable",
+                        colour = "#233038") + ggplot2::theme_void(),
+      width = 760, height = 740))
+  }
+  ras <- grDevices::as.raster(png::readPNG(img_path))
+  W <- v$imgWidth; H <- v$imgHeight
+  d <- data.frame(x = v$x, yy = -v$y,
+                  cluster = factor(v$cluster, levels = as.character(v$clusterLevels)),
+                  expr = v$expr)
+
+  p <- ggplot2::ggplot(d, ggplot2::aes(x = x, y = yy)) +
+    ggplot2::annotation_raster(ras, xmin = 0, xmax = W, ymin = -H, ymax = 0,
+                               interpolate = TRUE)
+  if (identical(colour_by, "gene")) {
+    p <- p +
+      ggplot2::geom_point(ggplot2::aes(colour = expr), size = 1.15,
+                          alpha = 0.85) +
+      ggplot2::scale_colour_gradientn(colours = biov_gradient(),
+                                      name = sprintf("%s\nlog1p CP10K", v$gene),
+                                      limits = c(0, max(v$exprMax, 1e-6)))
+  } else {
+    p <- p +
+      ggplot2::geom_point(ggplot2::aes(colour = cluster), size = 1.15,
+                          alpha = 0.85) +
+      ggplot2::scale_colour_manual(
+        values = stats::setNames(as.character(v$clusterColors),
+                                 as.character(v$clusterLevels)),
+        name = NULL) +
+      ggplot2::guides(colour = ggplot2::guide_legend(
+        override.aes = list(size = 3)))
+  }
+  p <- p +
+    ggplot2::coord_fixed(xlim = c(0, W), ylim = c(-H, 0), expand = FALSE) +
+    ggplot2::labs(x = NULL, y = NULL) +
+    ggplot2::theme_void(base_size = 12) +
+    ggplot2::theme(
+      plot.background = ggplot2::element_rect(fill = "transparent", colour = NA),
+      legend.position = "right",
+      legend.text = ggplot2::element_text(colour = "#233038", size = 8),
+      legend.title = ggplot2::element_text(colour = "#233038", size = 9),
+      plot.margin = ggplot2::margin(6, 6, 6, 6))
+  gg_data_uri(p, width = 780, height = 700)
+}
+
 # ---- SBS96 mutational signature profile -----------------------------------
 # The six substitution blocks are drawn as a geom_rect banner over a continuous
 # x rather than with facet_grid. Faceting would give six panels with their own

@@ -17,6 +17,9 @@ export const VIZ: CardDef[] = [
   { to: "/tahoe", key: "tahoe", title: "Tahoe-100M perturbation",
     desc: "Real drug × cell-line coverage from the Tahoe-100M single-cell atlas, clustered - prepared from the 100M-cell grid via duckdb.",
     engines: ["react", "ggplot"] },
+  { to: "/visium", key: "visium", title: "Visium spatial transcriptomics",
+    desc: "3,798 real capture spots on a breast cancer section, drawn over the H&E they came from. Colour by cluster or by any gene in the panel.",
+    engines: ["react", "ggplot"] },
   { to: "/ndarray", key: "ndarray", title: "N-dimensional array",
     desc: "A hyperspectral image cube (100×100×24) - the large multi-dimensional array format used in microscopy and geoscience. Re-slice any channel instantly on the GPU.",
     engines: ["react", "ggplot"] },
@@ -76,7 +79,7 @@ export default function Home() {
       <div className="hero">
         <h1><span className="accent">Plotomics</span> Live</h1>
         <p>
-          Plotomics, made interactive. Nineteen visualizations of real biological datasets,
+          Plotomics, made interactive. Twenty visualizations of real biological datasets,
           each rendered two ways - a classic <b>ggplot2</b> image and an interactive
           <b> Shiny&nbsp;React</b> (TSX) component powered by plotomics / WebGL. Pick a
           visualization, then flip the engine toggle to compare. The headline is the

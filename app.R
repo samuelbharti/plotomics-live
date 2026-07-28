@@ -35,6 +35,8 @@ server <- function(input, output, session) {
   onco_n <- reactive(if (is.null(input$onco_genes)) 25L else as.integer(input$onco_genes))
   lolli_gene <- reactive(if (is.null(input$lolli_gene)) "TP53" else input$lolli_gene)
   sbs_which <- reactive(if (is.null(input$sbs_profile)) "catalogue" else input$sbs_profile)
+  vis_gene <- reactive(if (is.null(input$visium_gene)) "ERBB2" else input$visium_gene)
+  vis_by <- reactive(if (is.null(input$visium_by)) "cluster" else input$visium_by)
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
@@ -220,6 +222,29 @@ server <- function(input, output, session) {
     list(genes = o$nrows, samples = o$ncols, cohort = o$cohort,
          altered = o$altered, events = sum(o$tmb),
          medianTmb = stats::median(o$tmb))
+  })
+
+  # ---- VISIUM spatial transcriptomics --------------------------------------
+  # The selected gene's per-spot vector is computed here and sent, so the canvas
+  # never derives expression itself and the two engines cannot disagree.
+  output$visium_data <- reactive_output({
+    v <- biov_visium(vis_gene(), vis_by())
+    colour <- if (identical(vis_by(), "gene")) v$expr else v$cluster
+    list(
+      columns = list(x = v$x, y = v$y, color = colour, label = v$barcode),
+      meta = list(image = v$image, imgWidth = v$imgWidth,
+                  imgHeight = v$imgHeight, spotDiameter = v$spotDiameter,
+                  levels = if (identical(vis_by(), "gene")) NULL else v$clusterLevels,
+                  colors = if (identical(vis_by(), "gene")) NULL else v$clusterColors)
+    )
+  })
+  output$visium_png <- reactive_output({ plot_visium_gg(vis_gene(), vis_by()) })
+  output$visium_stats <- reactive_output({
+    v <- biov_visium(vis_gene(), vis_by())
+    list(spots = v$nSpots, genes = v$nGenes,
+         clusters = length(v$clusterLevels), gene = v$gene,
+         geneList = v$genes, exprMax = round(v$exprMax, 2),
+         dataset = v$dataset)
   })
 
   # ---- MUTATIONAL SIGNATURES (SBS96) ---------------------------------------

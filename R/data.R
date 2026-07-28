@@ -523,6 +523,50 @@ biov_oncoplot <- local({
   }
 })
 
+# ---- Visium spatial transcriptomics ---------------------------------------
+# Real 10x Visium capture spots on a breast cancer section, with the low-res
+# H&E the browser also fetches (see data/prep/prepare-visium.R). The server
+# sends the selected gene's per-spot vector rather than shipping the whole
+# panel and letting the client subset it: 3,798 rounded numbers is nothing, and
+# it means the ggplot fill and the canvas fill come from one computation.
+biov_visium <- local({
+  cache <- NULL
+  function(gene = NULL, colour_by = "cluster") {
+    if (is.null(cache)) {
+      spots <- utils::read.csv(.data_path("visium_spots.csv"),
+                               stringsAsFactors = FALSE)
+      expr <- utils::read.csv(.data_path("visium_expr.csv"),
+                              stringsAsFactors = FALSE, check.names = FALSE)
+      meta <- jsonlite::fromJSON(.data_path("visium_meta.json"))
+      genes <- expr$gene
+      mat <- as.matrix(expr[, spots$barcode, drop = FALSE])
+      rownames(mat) <- genes
+      cl <- factor(spots$cluster,
+                   levels = paste("Cluster", sort(unique(as.integer(
+                     sub("^Cluster ", "", spots$cluster))))))
+      cache <<- list(spots = spots, mat = mat, genes = sort(genes),
+                     meta = meta, clusterLevels = levels(cl),
+                     clusterColors = biov_categorical(nlevels(cl)))
+    }
+    g <- if (is.null(gene) || !gene %in% rownames(cache$mat)) {
+      "ERBB2"
+    } else gene
+    if (!g %in% rownames(cache$mat)) g <- rownames(cache$mat)[1]
+    e <- unname(cache$mat[g, ])
+    list(x = cache$spots$x, y = cache$spots$y,
+         cluster = cache$spots$cluster, barcode = cache$spots$barcode,
+         expr = e, gene = g, genes = I(cache$genes),
+         colourBy = colour_by,
+         clusterLevels = I(cache$clusterLevels),
+         clusterColors = I(cache$clusterColors),
+         image = cache$meta$image, imgWidth = cache$meta$imgWidth,
+         imgHeight = cache$meta$imgHeight,
+         spotDiameter = cache$meta$spotDiameter,
+         nSpots = nrow(cache$spots), nGenes = length(cache$genes),
+         exprMax = max(e), dataset = cache$meta$dataset)
+  }
+})
+
 # ---- SBS96 mutational signatures ------------------------------------------
 # The observed 96-context catalogue for a TCGA-BRCA cohort plus signatures
 # extracted de novo from it (see data/prep/prepare-sbs96.R). These are NOT
