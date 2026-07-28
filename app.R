@@ -38,6 +38,9 @@ server <- function(input, output, session) {
   vis_gene <- reactive(if (is.null(input$visium_gene)) "ERBB2" else input$visium_gene)
   vis_by <- reactive(if (is.null(input$visium_by)) "cluster" else input$visium_by)
   xen_by <- reactive(if (is.null(input$xenium_color)) "class" else input$xenium_color)
+  surv_by <- reactive(if (is.null(input$surv_group)) "stage" else input$surv_group)
+  surv_gene <- reactive(if (is.null(input$surv_gene)) "TP53" else input$surv_gene)
+  dot_scale <- reactive(if (is.null(input$dot_scale)) "gene" else input$dot_scale)
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
@@ -125,6 +128,57 @@ server <- function(input, output, session) {
   output$umap_png <- reactive_output({
     uri <- plot_umap_gg(colour_by = umap_by())
     list(uri = unclass(uri), n = attr(uri, "n"), secs = attr(uri, "secs"))
+  })
+
+  # ---- MARKER DOT PLOT -----------------------------------------------------
+  # Gene ordering is the whole readability of this figure, so it is computed
+  # once in biov_dotplot() and both engines plot that order.
+  output$dotplot_data <- reactive_output({
+    d <- biov_dotplot(dot_scale())
+    list(
+      columns = list(gene = d$gene, cluster = d$cluster,
+                     pct = d$pct, value = d$value),
+      meta = list(genes = d$genes, clusters = d$clusters,
+                  valueLabel = d$valueLabel, sizeLabel = "% expressing")
+    )
+  })
+  output$dotplot_png <- reactive_output({
+    plot_dotplot_gg(dot_scale())
+  })
+  output$dotplot_stats <- reactive_output({
+    d <- biov_dotplot(dot_scale())
+    list(genes = d$nGenes, clusters = d$nClusters, spots = d$nSpots,
+         dots = length(d$value), valueLabel = d$valueLabel,
+         dataset = d$dataset)
+  })
+
+  # ---- SURVIVAL ------------------------------------------------------------
+  # Every number on this page is estimated once here and sent to both engines:
+  # the curves, the Greenwood band, the censoring times, the at-risk table, the
+  # medians and the log-rank p.
+  output$survival_data <- reactive_output({
+    s <- biov_survival(surv_by(), surv_gene())
+    list(
+      columns = list(time = s$time, surv = s$surv, lower = s$lower,
+                     upper = s$upper, group = s$group),
+      meta = list(groups = s$levels, groupColors = s$colors,
+                  censorTime = s$censorTime, censorSurv = s$censorSurv,
+                  censorGroup = s$censorGroup,
+                  riskTimes = s$riskTimes, riskCounts = s$riskCounts,
+                  pLabel = s$pLabel)
+    )
+  })
+  output$survival_png <- reactive_output({
+    plot_km_gg(surv_by(), surv_gene())
+  })
+  output$survival_stats <- reactive_output({
+    s <- biov_survival(surv_by(), surv_gene())
+    list(n = s$n, events = s$nEvents, strata = length(s$levels),
+         p = if (is.na(s$p)) NULL else signif(s$p, 3),
+         levels = s$levels, counts = s$counts, eventsPer = s$events,
+         # NA median means the curve never reached 50%, which is a real answer.
+         medians = ifelse(is.na(s$medians), -1, round(s$medians, 1)),
+         geneList = biov_survival_genes())
   })
 
   # ---- XENIUM --------------------------------------------------------------

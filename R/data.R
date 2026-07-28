@@ -558,9 +558,11 @@ biov_oncoplot <- local({
 # sends the selected gene's per-spot vector rather than shipping the whole
 # panel and letting the client subset it: 3,798 rounded numbers is nothing, and
 # it means the ggplot fill and the canvas fill come from one computation.
-biov_visium <- local({
+# Loaded once and shared by the spot map and the marker dot plot, so the two
+# pages cannot end up with different cluster labels for the same tissue.
+.visium_data <- local({
   cache <- NULL
-  function(gene = NULL, colour_by = "cluster") {
+  function() {
     if (is.null(cache)) {
       spots <- utils::read.csv(.data_path("visium_spots.csv"),
                                stringsAsFactors = FALSE)
@@ -577,6 +579,13 @@ biov_visium <- local({
                      meta = meta, clusterLevels = levels(cl),
                      clusterColors = biov_categorical(nlevels(cl)))
     }
+    cache
+  }
+})
+
+biov_visium <- local({
+  function(gene = NULL, colour_by = "cluster") {
+    cache <- .visium_data()
     g <- if (is.null(gene) || !gene %in% rownames(cache$mat)) {
       "ERBB2"
     } else gene
@@ -593,6 +602,84 @@ biov_visium <- local({
          spotDiameter = cache$meta$spotDiameter,
          nSpots = nrow(cache$spots), nGenes = length(cache$genes),
          exprMax = max(e), dataset = cache$meta$dataset)
+  }
+})
+
+# ---- marker gene dot plot -------------------------------------------------
+# The other half of the Visium story: the spot map says where the domains are,
+# this says what defines them. Per gene and cluster, the share of spots with any
+# detection (dot size) and the mean expression (dot colour), the two channels
+# every scanpy/Seurat dot plot uses.
+#
+# Gene order is computed here, not in either renderer. Sorting genes by the
+# cluster they best mark is what turns the grid into a readable diagonal, and
+# two implementations breaking ties differently would produce two different
+# figures from one dataset.
+biov_dotplot <- local({
+  cache <- new.env(parent = emptyenv())
+  function(scale_by = "gene") {
+    hit <- cache[[scale_by]]
+    if (!is.null(hit)) return(hit)
+
+    v <- .visium_data()
+    mat <- v$mat
+    cl <- factor(v$spots$cluster, levels = v$clusterLevels)
+    clusters <- levels(cl)
+    genes <- rownames(mat)
+
+    idx <- lapply(clusters, function(k) which(cl == k))
+    # Detection rate and mean expression, gene x cluster.
+    pct <- vapply(idx, function(i) rowMeans(mat[, i, drop = FALSE] > 0) * 100,
+                  numeric(length(genes)))
+    avg <- vapply(idx, function(i) rowMeans(mat[, i, drop = FALSE]),
+                  numeric(length(genes)))
+    dimnames(pct) <- list(genes, clusters)
+    dimnames(avg) <- list(genes, clusters)
+
+    # Scaling across clusters within a gene is what makes a lowly expressed but
+    # highly specific marker visible next to a ubiquitous one. Raw means keep
+    # the absolute comparison instead; the page offers both.
+    scaled <- if (identical(scale_by, "gene")) {
+      rng <- t(apply(avg, 1, range))
+      span <- rng[, 2] - rng[, 1]
+      out <- (avg - rng[, 1]) / ifelse(span > 0, span, 1)
+      out[span <= 0, ] <- 0
+      out
+    } else {
+      avg
+    }
+
+    # Order genes by the cluster they mark most strongly, then within that by
+    # how strongly. Ties resolve on the gene name so the order is total.
+    best <- max.col(scaled, ties.method = "first")
+    strength <- scaled[cbind(seq_along(genes), best)] -
+      (rowSums(scaled) - scaled[cbind(seq_along(genes), best)]) /
+        (ncol(scaled) - 1)
+    ord <- order(best, -strength, genes)
+    genes <- genes[ord]
+    pct <- pct[ord, , drop = FALSE]
+    avg <- avg[ord, , drop = FALSE]
+    scaled <- scaled[ord, , drop = FALSE]
+
+    # Long form, row-major over genes: one entry per dot.
+    out <- list(
+      gene = rep(genes, each = length(clusters)),
+      cluster = rep(clusters, times = length(genes)),
+      pct = as.numeric(t(pct)),
+      value = as.numeric(t(scaled)),
+      meanExpr = as.numeric(t(avg)),
+      genes = genes, clusters = clusters,
+      clusterColors = v$clusterColors,
+      nGenes = length(genes), nClusters = length(clusters),
+      nSpots = nrow(v$spots),
+      spotsPerCluster = unname(as.integer(table(cl))),
+      scaleBy = scale_by,
+      valueLabel = if (identical(scale_by, "gene"))
+        "scaled mean expression" else "mean log1p CP10K",
+      dataset = v$meta$dataset
+    )
+    cache[[scale_by]] <- out
+    out
   }
 })
 
@@ -849,3 +936,155 @@ biov_pae <- local({
     out
   }
 })
+
+# ---- overall survival (Kaplan-Meier) --------------------------------------
+# The same TCGA-BRCA cohort the oncoplot reads, now with its follow-up. All the
+# estimation happens here, once: survival probabilities, Greenwood bands,
+# censoring times, at-risk counts, medians and the log-rank test. Both engines
+# get the same numbers, so the curves cannot step in different places.
+
+# Strata for the gene view come from the alteration table the oncoplot uses, so
+# "altered" means exactly what that page shows it to mean.
+biov_survival_genes <- local({
+  cache <- NULL
+  function(n = 12L) {
+    if (is.null(cache)) {
+      a <- biov_brca_alterations()
+      cache <<- names(sort(table(a$gene), decreasing = TRUE))
+    }
+    utils::head(cache, n)
+  }
+})
+
+.survival_strata <- function(group_by, gene) {
+  cl <- biov_brca_clinical()
+  keep <- !is.na(cl$os_months) & !is.na(cl$os_event) & cl$os_months > 0
+  cl <- cl[keep, , drop = FALSE]
+
+  if (identical(group_by, "gene")) {
+    altered <- unique(biov_brca_alterations()$sample[
+      biov_brca_alterations()$gene == gene])
+    lab <- ifelse(cl$sample %in% altered,
+                  sprintf("%s altered", gene),
+                  sprintf("%s wild-type", gene))
+    levs <- c(sprintf("%s altered", gene), sprintf("%s wild-type", gene))
+    # Altered in the warning red, wild-type in the calm teal.
+    cols <- c("#C63F3E", "#0E7175")
+  } else if (identical(group_by, "age")) {
+    # Conventional TCGA cut points rather than a median split, which would move
+    # with the cohort and make the strata mean something different each time.
+    lab <- cut(cl$age, breaks = c(-Inf, 50, 65, Inf),
+               labels = c("under 50", "50 to 64", "65 and over"))
+    lab <- as.character(lab)
+    levs <- c("under 50", "50 to 64", "65 and over")
+    cols <- biov_categorical(3)
+  } else if (identical(group_by, "stage")) {
+    lab <- cl$stage
+    levs <- c("I", "II", "III", "IV")
+    cols <- c("#0E7175", "#708C69", "#E4A25B", "#C63F3E")
+  } else {
+    lab <- cl$subtype
+    levs <- c("LumA", "LumB", "Her2", "Basal", "Normal")
+    cols <- biov_categorical(5)
+  }
+
+  ok <- !is.na(lab) & lab %in% levs
+  levs_present <- levs[levs %in% unique(lab[ok])]
+  list(df = data.frame(time = cl$os_months[ok], event = cl$os_event[ok],
+                       group = factor(lab[ok], levels = levs_present),
+                       stringsAsFactors = FALSE),
+       levels = levs_present,
+       colors = cols[match(levs_present, levs)])
+}
+
+biov_survival <- local({
+  cache <- new.env(parent = emptyenv())
+  function(group_by = "subtype", gene = "TP53") {
+    key <- paste(group_by, gene, sep = "|")
+    hit <- cache[[key]]
+    if (!is.null(hit)) return(hit)
+
+    if (!requireNamespace("survival", quietly = TRUE)) {
+      stop("the survival package is required for the Kaplan-Meier page")
+    }
+    s <- .survival_strata(group_by, gene)
+    d <- s$df
+    fit <- survival::survfit(survival::Surv(time, event) ~ group, data = d)
+
+    n <- length(fit$time)
+    grp <- if (is.null(fit$strata)) rep(s$levels[1], n) else
+      rep(sub("^[^=]*=", "", names(fit$strata)), times = as.integer(fit$strata))
+
+    # survfit does not store the origin, and without it every curve would begin
+    # partway down its first drop.
+    starts <- data.frame(time = 0, surv = 1, lower = 1, upper = 1,
+                         group = s$levels, stringsAsFactors = FALSE)
+    curves <- rbind(starts, data.frame(
+      time = as.numeric(fit$time), surv = as.numeric(fit$surv),
+      lower = as.numeric(fit$lower), upper = as.numeric(fit$upper),
+      group = grp, stringsAsFactors = FALSE))
+    curves$group <- factor(curves$group, levels = s$levels)
+    curves <- curves[order(curves$group, curves$time), , drop = FALSE]
+    # survfit's CI is NA until the first event; carry the origin's 1 forward so
+    # the band has somewhere to start.
+    curves$lower[is.na(curves$lower)] <- 1
+    curves$upper[is.na(curves$upper)] <- 1
+
+    cens <- fit$n.censor > 0
+    censor <- data.frame(time = as.numeric(fit$time[cens]),
+                         surv = as.numeric(fit$surv[cens]),
+                         group = grp[cens], stringsAsFactors = FALSE)
+
+    # A round grid the axis can also use as its ticks.
+    tmax <- max(d$time)
+    risk_times <- seq(0, floor(tmax / 60) * 60, by = 60)
+    if (length(risk_times) < 2) risk_times <- c(0, round(tmax))
+    risk <- t(vapply(s$levels, function(g) {
+      i <- which(grp == g)
+      tt <- fit$time[i]; nr <- fit$n.risk[i]
+      vapply(risk_times, function(t) {
+        j <- which(tt >= t)
+        if (length(j) == 0L) 0L else as.integer(nr[j[1]])
+      }, integer(1))
+    }, integer(length(risk_times))))
+
+    # Median survival per stratum: the first time the curve reaches 0.5. NA
+    # when it never does, which is the honest answer, not "not reached yet".
+    medians <- vapply(s$levels, function(g) {
+      i <- which(curves$group == g)
+      j <- which(curves$surv[i] <= 0.5)
+      if (length(j) == 0L) NA_real_ else curves$time[i][j[1]]
+    }, numeric(1))
+
+    p <- NA_real_
+    if (length(s$levels) > 1) {
+      sd <- survival::survdiff(survival::Surv(time, event) ~ group, data = d)
+      p <- stats::pchisq(sd$chisq, df = length(sd$n) - 1, lower.tail = FALSE)
+    }
+
+    out <- list(
+      time = curves$time, surv = curves$surv,
+      lower = curves$lower, upper = curves$upper,
+      group = as.character(curves$group),
+      censorTime = censor$time, censorSurv = censor$surv,
+      censorGroup = censor$group,
+      levels = s$levels, colors = s$colors,
+      riskTimes = risk_times,
+      riskCounts = as.integer(t(risk)),   # row-major, groups x times
+      medians = unname(medians),
+      counts = unname(as.integer(table(d$group))),
+      events = unname(as.integer(tapply(d$event, d$group, sum))),
+      n = nrow(d), nEvents = sum(d$event == 1),
+      p = p, pLabel = .p_label(p),
+      groupBy = group_by, gene = gene
+    )
+    cache[[key]] <- out
+    out
+  }
+})
+
+.p_label <- function(p) {
+  if (is.na(p)) return("")
+  if (p < 0.001) return("log-rank p < 0.001")
+  sprintf("log-rank p = %s", format(round(p, 3), nsmall = 3))
+}

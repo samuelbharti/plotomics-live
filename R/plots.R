@@ -767,6 +767,136 @@ plot_umap_gg <- function(colour_by = "cell_type") {
   uri
 }
 
+# ---- marker gene dot plot -------------------------------------------------
+# Gene order, the detection percentages and the scaling all come from
+# biov_dotplot(), so this and the React component plot one computation. Size is
+# mapped through scale_size_area, which makes AREA proportional to the
+# percentage the way the component's sqrt radius does; scale_size would map
+# radius instead and overstate the biggest dots.
+plot_dotplot_gg <- function(scale_by = "gene") {
+  d <- biov_dotplot(scale_by)
+  df <- data.frame(
+    gene = factor(d$gene, levels = rev(d$genes)),   # first gene at the top
+    cluster = factor(d$cluster, levels = d$clusters),
+    pct = d$pct, value = d$value
+  )
+  # Dots for genes never seen in a cluster are noise, not information.
+  df <- df[df$pct > 0, , drop = FALSE]
+
+  p <- ggplot2::ggplot(df, ggplot2::aes(cluster, gene)) +
+    ggplot2::geom_point(ggplot2::aes(size = pct, colour = value)) +
+    ggplot2::scale_size_area(max_size = 5.2, name = "% expressing",
+                             limits = c(0, 100),
+                             breaks = c(25, 50, 75, 100)) +
+    ggplot2::scale_colour_gradientn(colours = biov_gradient(),
+                                    name = d$valueLabel) +
+    ggplot2::labs(x = NULL, y = NULL) +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 9),
+      axis.text.y = ggplot2::element_text(size = 7),
+      panel.grid.major.x = ggplot2::element_blank(),
+      legend.position = "right",
+      legend.key.size = ggplot2::unit(10, "pt"),
+      legend.title = ggplot2::element_text(size = 8),
+      legend.text = ggplot2::element_text(size = 7)
+    )
+  gg_data_uri(p, width = 820, height = 900)
+}
+
+# ---- Kaplan-Meier survival + number at risk ------------------------------
+# Curves and risk table are two panels sharing one x scale, aligned with
+# patchwork. Everything plotted is computed in biov_survival(), so this and the
+# React component are drawing one set of numbers.
+
+# Duplicate each point so a straight line through the result traces the step.
+# geom_step would do it for the curve, but a ribbon has no step variant and
+# would draw diagonal band edges the estimator never asserts. Expanding here
+# instead is also the same operation the React component's stepPoints() does,
+# so the two engines draw geometrically identical shapes.
+.step_expand <- function(df) {
+  n <- nrow(df)
+  if (n < 2) return(df)
+  out <- df[rep(seq_len(n), each = 2), , drop = FALSE]
+  out <- out[-1, , drop = FALSE]
+  out <- out[-nrow(out), , drop = FALSE]
+  # Odd rows carry the previous y at the new x; even rows are the real point.
+  keep_prev <- seq(1, nrow(out), by = 2)
+  for (col in c("surv", "lower", "upper")) {
+    if (!is.null(out[[col]])) out[[col]][keep_prev] <- df[[col]][-n]
+  }
+  out$time[keep_prev] <- df$time[-1]
+  out
+}
+
+plot_km_gg <- function(group_by = "subtype", gene = "TP53") {
+  # patchwork's `/` is an S3 method on ggplot objects, registered when its
+  # namespace loads. Without this the operator is a plain error, and whether it
+  # worked would depend on whether the oncoplot page had been visited first.
+  if (!requireNamespace("patchwork", quietly = TRUE)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = "patchwork is required",
+                        colour = "#233038") + ggplot2::theme_void()))
+  }
+  s <- biov_survival(group_by, gene)
+  cols <- stats::setNames(s$colors, s$levels)
+  curves <- data.frame(time = s$time, surv = s$surv,
+                       lower = s$lower, upper = s$upper,
+                       group = factor(s$group, levels = s$levels))
+  stepped <- do.call(rbind, lapply(split(curves, curves$group), .step_expand))
+  cens <- data.frame(time = s$censorTime, surv = s$censorSurv,
+                     group = factor(s$censorGroup, levels = s$levels))
+  # Match the component, which frames to the last observation, not the last
+  # tick. coord_cartesian rather than limits so nothing is silently dropped.
+  xmax <- max(c(s$time, s$riskTimes))
+
+  top <- ggplot2::ggplot(stepped, ggplot2::aes(time, surv, colour = group)) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = lower, ymax = upper, fill = group),
+                         alpha = 0.13, colour = NA) +
+    ggplot2::geom_line(linewidth = 0.7) +
+    ggplot2::geom_point(data = cens, shape = 3, size = 1.1,
+                        show.legend = FALSE) +
+    ggplot2::scale_colour_manual(values = cols, name = NULL, drop = FALSE) +
+    ggplot2::scale_fill_manual(values = cols, guide = "none", drop = FALSE) +
+    ggplot2::scale_y_continuous(labels = function(v) paste0(round(100 * v), "%")) +
+    ggplot2::scale_x_continuous(breaks = s$riskTimes) +
+    ggplot2::coord_cartesian(xlim = c(0, xmax), ylim = c(0, 1)) +
+    ggplot2::labs(x = NULL, y = "overall survival") +
+    ggplot2::annotate("text", x = 2, y = 0.06, label = s$pLabel,
+                      hjust = 0, size = 3.6, colour = "#233038") +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(legend.position = "top",
+                   legend.text = ggplot2::element_text(size = 9),
+                   # The axis belongs under the risk table, drawn once.
+                   axis.text.x = ggplot2::element_blank())
+
+  risk <- expand.grid(time = s$riskTimes, group = factor(s$levels, s$levels),
+                      KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  # riskCounts is row-major groups x times, so column-major expand.grid needs
+  # the transpose to line up.
+  risk$n <- as.integer(t(matrix(s$riskCounts, nrow = length(s$levels),
+                                byrow = TRUE)))
+  # Reverse so the first stratum sits at the top, matching the legend.
+  risk$group <- factor(risk$group, levels = rev(s$levels))
+
+  bottom <- ggplot2::ggplot(risk, ggplot2::aes(time, group)) +
+    ggplot2::geom_text(ggplot2::aes(label = n, colour = group), size = 3.1,
+                       show.legend = FALSE) +
+    ggplot2::scale_colour_manual(values = cols, drop = FALSE) +
+    ggplot2::scale_x_continuous(breaks = s$riskTimes) +
+    ggplot2::coord_cartesian(xlim = c(0, xmax)) +
+    ggplot2::labs(x = "months", y = NULL, title = "number at risk") +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(
+      panel.grid = ggplot2::element_blank(),
+      plot.title = ggplot2::element_text(size = 10, colour = "#6E7B72"),
+      axis.text.y = ggplot2::element_text(size = 9)
+    )
+
+  p <- top / bottom + patchwork::plot_layout(heights = c(3.4, 1))
+  gg_data_uri(p, width = 900, height = 640)
+}
+
 # ---- Xenium single-molecule map (same subsample contrast as the UMAP page) --
 # Levels and colours come from www/data/xenium_meta.json, the same sidecar the
 # React client reads, so the legend order and the palette cannot drift between

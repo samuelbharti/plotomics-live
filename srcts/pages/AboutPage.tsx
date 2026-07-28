@@ -79,13 +79,36 @@ const ENTRIES: Entry[] = [
   },
   {
     title: "Visium spatial transcriptomics",
-    what: "3,798 Visium capture spots on a human breast cancer section, at their real slide coordinates over the H&E image, coloured by graph-based cluster or by a gene from a 60-gene panel.",
+    what: "3,798 Visium capture spots on a human breast cancer section, at their real slide coordinates over the H&E image, coloured by graph-based cluster or by a gene from a 72-gene marker panel.",
     react: "plotomics spatial: the tissue image and the spots share one contain-fit transform computed once, so histology and overlay cannot drift apart on resize or full-screen. A spot-opacity control fades the overlay to read the histology underneath.",
     ggplot: "annotation_raster of the same PNG the browser fetches, with geom_point on top and coord_fixed. y is negated in the data rather than using scale_y_reverse, which would flip the raster's mapping and draw the tissue upside down under correctly-placed spots.",
-    data: "10x Genomics public dataset, Human Breast Cancer (Block A Section 1), Visium Spatial Gene Expression v1.1.0, CC BY 4.0. Spot coordinates and the low-res H&E come from the spatial bundle with the published scale factor applied; clusters and the marker panel come from 10x's own graph-based clustering and differential expression, so the cluster assignment is the dataset's rather than ours. Expression is log1p CP10K computed against each spot's total counts. The selected gene's per-spot vector is computed server-side and sent, so the two engines colour from one computation.",
+    data: "10x Genomics public dataset, Human Breast Cancer (Block A Section 1), Visium Spatial Gene Expression v1.1.0, CC BY 4.0. Spot coordinates and the low-res H&E come from the spatial bundle with the published scale factor applied; clusters and the marker panel come from 10x's own graph-based clustering and differential expression, so the cluster assignment is the dataset's rather than ours; markers are ranked among genes clearing a 0.25 mean-count detection floor, without which a fold-change ranking fills up with genes seen in a handful of spots. Expression is log1p CP10K computed against each spot's total counts. The selected gene's per-spot vector is computed server-side and sent, so the two engines colour from one computation.",
     refs: [
       { label: "10x Genomics - Human Breast Cancer (Block A Section 1)", href: "https://www.10xgenomics.com/datasets/human-breast-cancer-block-a-section-1-1-standard" },
       { label: "Ståhl et al., Science 353:78–82 (2016) - spatially resolved transcriptomics", href: "https://doi.org/10.1126/science.aaf2403" },
+    ],
+  },
+  {
+    title: "Marker gene dot plot",
+    what: "72 marker genes across the 11 Visium spatial clusters. Dot size is the share of spots in that cluster with any detection, colour is the mean expression, either scaled within each gene or as raw values.",
+    react: "plotomics dotplot: dots on canvas, labels, gridlines and both legends as an SVG overlay. Dot area rather than radius is proportional to the percentage, so a 50% dot really is half the ink of a 100% one.",
+    ggplot: "geom_point with scale_size_area, which is the ggplot2 equivalent of that same choice. Plain scale_size maps radius and would overstate the biggest dots.",
+    data: "The same 10x Visium breast cancer section and the same graph-based clusters as the spot map, summarised per cluster. The gene panel is 10x's own per-cluster differential expression, but ranked among genes clearing a detection floor of 0.25 mean counts: without that floor the top of a fold-change ranking is genes seen in a handful of spots and nowhere else, and the panel fills up with lncRNAs and immunoglobulin segments rather than markers anyone can read. Gene ordering, the detection percentages and the within-gene scaling are computed server-side once, so both engines draw the same diagonal.",
+    refs: [
+      { label: "10x Genomics - Human Breast Cancer (Block A Section 1)", href: "https://www.10xgenomics.com/datasets/human-breast-cancer-block-a-section-1-1-standard" },
+      { label: "Wolf et al., Genome Biol 19:15 (2018) - SCANPY", href: "https://doi.org/10.1186/s13059-017-1382-1" },
+    ],
+  },
+  {
+    title: "Kaplan-Meier survival",
+    what: "Overall survival for 1,067 TCGA breast tumours with usable follow-up, stratified by tumour stage, PAM50 subtype, age band, or whether one of the twelve most-altered drivers is hit. Censoring ticks, a 95% band, medians, the log-rank test and the number-at-risk table.",
+    react: "plotomics km: step curves and the confidence band on canvas, axes, risk table and legend as an SVG overlay. Hovering reads off every stratum's estimate at that time.",
+    ggplot: "the steps are expanded into explicit vertices in R and drawn with geom_line plus a geom_ribbon band, because a ribbon has no step variant and would otherwise draw diagonal edges the estimator never asserts. The risk table is a second panel sharing the x scale via patchwork.",
+    data: "Same cBioPortal cohort as the oncoplot, so 'altered' on this page means exactly what that page shows. Estimation happens once server-side with the survival package: Kaplan-Meier curves, Greenwood confidence limits, at-risk counts and the log-rank p, all shipped to both engines so the two cannot step in different places. Medians are the first time a curve reaches 50%, reported as 'not reached' when it never does rather than being replaced by the last follow-up time. Patients with missing or non-positive follow-up are dropped, which is why the count is 1,067 rather than the full 1,080. The gene strata are worth reading honestly: TP53 alteration is not prognostic for overall survival in this cohort (p = 0.66), which is the sort of null result a gallery figure usually hides.",
+    refs: [
+      { label: "Kaplan & Meier, J Am Stat Assoc 53:457–481 (1958) - nonparametric estimation from incomplete observations", href: "https://doi.org/10.1080/01621459.1958.10501452" },
+      { label: "Therneau & Grambsch (2000) - Modeling Survival Data, the survival package", href: "https://doi.org/10.1007/978-1-4757-3294-8" },
+      { label: "Cerami et al., Cancer Discov 2:401–404 (2012) - the cBioPortal", href: "https://doi.org/10.1158/2159-8290.CD-12-0095" },
     ],
   },
   {
@@ -234,7 +257,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across twenty-one common biological visualizations.
+            compare the two approaches across twenty-three common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>
