@@ -43,7 +43,15 @@ dir.create(www_dir, showWarnings = FALSE, recursive = TRUE)
 BASE <- paste0("https://cf.10xgenomics.com/samples/spatial-exp/1.1.0/",
                "V1_Breast_Cancer_Block_A_Section_1/",
                "V1_Breast_Cancer_Block_A_Section_1_")
-N_GENES <- 60L   # marker panel size
+# Panel size. Must stay above canon + per-cluster picks or the truncation below
+# silently drops the last clusters' markers, leaving them unrepresented in the
+# dot plot.
+N_GENES <- 80L
+N_PER_CLUSTER <- 6L
+# A gene has to actually be detected to be a marker. Without this floor the top
+# of the fold-change ranking is genes seen in a handful of spots and nowhere
+# else, which is how the panel filled up with lncRNAs and IG segments.
+MIN_MEAN_COUNTS <- 0.25
 
 download_once <- function(url, dest) {
   if (file.exists(dest) && file.info(dest)$size > 0) {
@@ -106,8 +114,19 @@ de <- utils::read.csv(file.path(raw_dir, "analysis", "diffexp", "graphclust",
                                 "differential_expression.csv"),
                       stringsAsFactors = FALSE, check.names = FALSE)
 lfc_cols <- grep("Log2 fold change", names(de), value = TRUE)
-top_per_cluster <- unlist(lapply(lfc_cols, function(cc) {
-  de[["Feature Name"]][order(-de[[cc]])][1:6]
+mc_cols <- grep("Mean Counts", names(de), value = TRUE)
+ap_cols <- grep("Adjusted p value", names(de), value = TRUE)
+# Rank by fold change within the genes that clear the detection floor, relaxing
+# significance before the floor: a marker nobody can see is not a marker.
+top_per_cluster <- unlist(lapply(seq_along(lfc_cols), function(k) {
+  ok <- integer(0)
+  for (p_cut in c(0.01, 0.05, 1)) {
+    ok <- which(de[[ap_cols[k]]] < p_cut & de[[mc_cols[k]]] >= MIN_MEAN_COUNTS)
+    if (length(ok) >= N_PER_CLUSTER) break
+  }
+  if (!length(ok)) return(character(0))
+  ranked <- de[["Feature Name"]][ok][order(-de[[lfc_cols[k]]][ok])]
+  ranked[seq_len(min(N_PER_CLUSTER, length(ranked)))]
 }))
 CANON <- c("ERBB2", "ESR1", "PGR", "MKI67", "KRT5", "KRT14", "KRT8", "KRT18",
            "CD3D", "PTPRC", "COL1A1", "ACTA2", "EPCAM", "VIM", "CD68", "MS4A1")

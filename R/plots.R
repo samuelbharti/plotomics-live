@@ -767,6 +767,43 @@ plot_umap_gg <- function(colour_by = "cell_type") {
   uri
 }
 
+# ---- marker gene dot plot -------------------------------------------------
+# Gene order, the detection percentages and the scaling all come from
+# biov_dotplot(), so this and the React component plot one computation. Size is
+# mapped through scale_size_area, which makes AREA proportional to the
+# percentage the way the component's sqrt radius does; scale_size would map
+# radius instead and overstate the biggest dots.
+plot_dotplot_gg <- function(scale_by = "gene") {
+  d <- biov_dotplot(scale_by)
+  df <- data.frame(
+    gene = factor(d$gene, levels = rev(d$genes)),   # first gene at the top
+    cluster = factor(d$cluster, levels = d$clusters),
+    pct = d$pct, value = d$value
+  )
+  # Dots for genes never seen in a cluster are noise, not information.
+  df <- df[df$pct > 0, , drop = FALSE]
+
+  p <- ggplot2::ggplot(df, ggplot2::aes(cluster, gene)) +
+    ggplot2::geom_point(ggplot2::aes(size = pct, colour = value)) +
+    ggplot2::scale_size_area(max_size = 5.2, name = "% expressing",
+                             limits = c(0, 100),
+                             breaks = c(25, 50, 75, 100)) +
+    ggplot2::scale_colour_gradientn(colours = biov_gradient(),
+                                    name = d$valueLabel) +
+    ggplot2::labs(x = NULL, y = NULL) +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 9),
+      axis.text.y = ggplot2::element_text(size = 7),
+      panel.grid.major.x = ggplot2::element_blank(),
+      legend.position = "right",
+      legend.key.size = ggplot2::unit(10, "pt"),
+      legend.title = ggplot2::element_text(size = 8),
+      legend.text = ggplot2::element_text(size = 7)
+    )
+  gg_data_uri(p, width = 820, height = 900)
+}
+
 # ---- Kaplan-Meier survival + number at risk ------------------------------
 # Curves and risk table are two panels sharing one x scale, aligned with
 # patchwork. Everything plotted is computed in biov_survival(), so this and the

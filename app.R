@@ -40,6 +40,7 @@ server <- function(input, output, session) {
   xen_by <- reactive(if (is.null(input$xenium_color)) "class" else input$xenium_color)
   surv_by <- reactive(if (is.null(input$surv_group)) "stage" else input$surv_group)
   surv_gene <- reactive(if (is.null(input$surv_gene)) "TP53" else input$surv_gene)
+  dot_scale <- reactive(if (is.null(input$dot_scale)) "gene" else input$dot_scale)
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
@@ -127,6 +128,28 @@ server <- function(input, output, session) {
   output$umap_png <- reactive_output({
     uri <- plot_umap_gg(colour_by = umap_by())
     list(uri = unclass(uri), n = attr(uri, "n"), secs = attr(uri, "secs"))
+  })
+
+  # ---- MARKER DOT PLOT -----------------------------------------------------
+  # Gene ordering is the whole readability of this figure, so it is computed
+  # once in biov_dotplot() and both engines plot that order.
+  output$dotplot_data <- reactive_output({
+    d <- biov_dotplot(dot_scale())
+    list(
+      columns = list(gene = d$gene, cluster = d$cluster,
+                     pct = d$pct, value = d$value),
+      meta = list(genes = d$genes, clusters = d$clusters,
+                  valueLabel = d$valueLabel, sizeLabel = "% expressing")
+    )
+  })
+  output$dotplot_png <- reactive_output({
+    plot_dotplot_gg(dot_scale())
+  })
+  output$dotplot_stats <- reactive_output({
+    d <- biov_dotplot(dot_scale())
+    list(genes = d$nGenes, clusters = d$nClusters, spots = d$nSpots,
+         dots = length(d$value), valueLabel = d$valueLabel,
+         dataset = d$dataset)
   })
 
   # ---- SURVIVAL ------------------------------------------------------------

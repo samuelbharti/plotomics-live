@@ -558,9 +558,11 @@ biov_oncoplot <- local({
 # sends the selected gene's per-spot vector rather than shipping the whole
 # panel and letting the client subset it: 3,798 rounded numbers is nothing, and
 # it means the ggplot fill and the canvas fill come from one computation.
-biov_visium <- local({
+# Loaded once and shared by the spot map and the marker dot plot, so the two
+# pages cannot end up with different cluster labels for the same tissue.
+.visium_data <- local({
   cache <- NULL
-  function(gene = NULL, colour_by = "cluster") {
+  function() {
     if (is.null(cache)) {
       spots <- utils::read.csv(.data_path("visium_spots.csv"),
                                stringsAsFactors = FALSE)
@@ -577,6 +579,13 @@ biov_visium <- local({
                      meta = meta, clusterLevels = levels(cl),
                      clusterColors = biov_categorical(nlevels(cl)))
     }
+    cache
+  }
+})
+
+biov_visium <- local({
+  function(gene = NULL, colour_by = "cluster") {
+    cache <- .visium_data()
     g <- if (is.null(gene) || !gene %in% rownames(cache$mat)) {
       "ERBB2"
     } else gene
@@ -593,6 +602,84 @@ biov_visium <- local({
          spotDiameter = cache$meta$spotDiameter,
          nSpots = nrow(cache$spots), nGenes = length(cache$genes),
          exprMax = max(e), dataset = cache$meta$dataset)
+  }
+})
+
+# ---- marker gene dot plot -------------------------------------------------
+# The other half of the Visium story: the spot map says where the domains are,
+# this says what defines them. Per gene and cluster, the share of spots with any
+# detection (dot size) and the mean expression (dot colour), the two channels
+# every scanpy/Seurat dot plot uses.
+#
+# Gene order is computed here, not in either renderer. Sorting genes by the
+# cluster they best mark is what turns the grid into a readable diagonal, and
+# two implementations breaking ties differently would produce two different
+# figures from one dataset.
+biov_dotplot <- local({
+  cache <- new.env(parent = emptyenv())
+  function(scale_by = "gene") {
+    hit <- cache[[scale_by]]
+    if (!is.null(hit)) return(hit)
+
+    v <- .visium_data()
+    mat <- v$mat
+    cl <- factor(v$spots$cluster, levels = v$clusterLevels)
+    clusters <- levels(cl)
+    genes <- rownames(mat)
+
+    idx <- lapply(clusters, function(k) which(cl == k))
+    # Detection rate and mean expression, gene x cluster.
+    pct <- vapply(idx, function(i) rowMeans(mat[, i, drop = FALSE] > 0) * 100,
+                  numeric(length(genes)))
+    avg <- vapply(idx, function(i) rowMeans(mat[, i, drop = FALSE]),
+                  numeric(length(genes)))
+    dimnames(pct) <- list(genes, clusters)
+    dimnames(avg) <- list(genes, clusters)
+
+    # Scaling across clusters within a gene is what makes a lowly expressed but
+    # highly specific marker visible next to a ubiquitous one. Raw means keep
+    # the absolute comparison instead; the page offers both.
+    scaled <- if (identical(scale_by, "gene")) {
+      rng <- t(apply(avg, 1, range))
+      span <- rng[, 2] - rng[, 1]
+      out <- (avg - rng[, 1]) / ifelse(span > 0, span, 1)
+      out[span <= 0, ] <- 0
+      out
+    } else {
+      avg
+    }
+
+    # Order genes by the cluster they mark most strongly, then within that by
+    # how strongly. Ties resolve on the gene name so the order is total.
+    best <- max.col(scaled, ties.method = "first")
+    strength <- scaled[cbind(seq_along(genes), best)] -
+      (rowSums(scaled) - scaled[cbind(seq_along(genes), best)]) /
+        (ncol(scaled) - 1)
+    ord <- order(best, -strength, genes)
+    genes <- genes[ord]
+    pct <- pct[ord, , drop = FALSE]
+    avg <- avg[ord, , drop = FALSE]
+    scaled <- scaled[ord, , drop = FALSE]
+
+    # Long form, row-major over genes: one entry per dot.
+    out <- list(
+      gene = rep(genes, each = length(clusters)),
+      cluster = rep(clusters, times = length(genes)),
+      pct = as.numeric(t(pct)),
+      value = as.numeric(t(scaled)),
+      meanExpr = as.numeric(t(avg)),
+      genes = genes, clusters = clusters,
+      clusterColors = v$clusterColors,
+      nGenes = length(genes), nClusters = length(clusters),
+      nSpots = nrow(v$spots),
+      spotsPerCluster = unname(as.integer(table(cl))),
+      scaleBy = scale_by,
+      valueLabel = if (identical(scale_by, "gene"))
+        "scaled mean expression" else "mean log1p CP10K",
+      dataset = v$meta$dataset
+    )
+    cache[[scale_by]] <- out
+    out
   }
 })
 
