@@ -44,6 +44,10 @@ const KB: Viz[] = [
     what: "a gene x cluster grid where dot size is the percent expressing and colour is the expression level.",
     capacity: "hundreds of genes x tens of clusters; dots are canvas-drawn so the grid is not the limit, legibility is.",
     pick: "you have per-cluster expression summaries and want to see which genes mark which group." },
+  { route: "/violin", name: "Stacked violin", kw: ["violin", "stacked violin", "distribution", "density", "bimodal", "bimodality", "ridgeline", "box plot", "boxplot", "kde", "spread", "expression distribution"],
+    what: "one row per gene, one violin per cluster, showing the whole expression distribution rather than a summary.",
+    capacity: "tens of features x tens of groups; the payload is the density grid, not the cell count, so cohort size does not matter.",
+    pick: "a mean or median is hiding the shape, especially when a gene is bimodal within a group." },
   { route: "/survival", name: "Kaplan-Meier survival", kw: ["survival", "kaplan", "meier", "kaplan-meier", "km", "censoring", "censored", "time to event", "time-to-event", "prognosis", "prognostic", "outcome", "hazard", "log-rank", "logrank", "at risk", "cox", "os", "pfs", "overall survival", "clinical", "follow-up"],
     what: "overall survival curves per stratum with censoring ticks, a 95% band and the number-at-risk table.",
     capacity: "any cohort size; the curve is a step function over event times, so the point count follows deaths not patients.",
@@ -113,7 +117,7 @@ const KB: Viz[] = [
 type Msg = { role: "user" | "bot"; text: string; recs?: string[] };
 
 const INTRO =
-  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the twenty-four visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
+  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the twenty-five visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
 
 function findViz(q: string): Viz[] {
   const s = q.toLowerCase();
@@ -155,7 +159,7 @@ function answer(q: string): Msg {
   // about / what is this
   if (/(what is|about|who|why|explain the app|purpose|how does this work|engine|ggplot|shiny react|two ways)/.test(s)) {
     return { role: "bot", text:
-      "Plotomics Live shows twenty-four common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
+      "Plotomics Live shows twenty-five common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
   }
 
   // specific visualization info
@@ -166,7 +170,7 @@ function answer(q: string): Msg {
   }
 
   return { role: "bot", text:
-    "I can help with what this app is, any of the twenty-four visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
+    "I can help with what this app is, any of the twenty-five visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
 }
 
 const CHIPS = [

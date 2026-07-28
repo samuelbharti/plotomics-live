@@ -767,6 +767,73 @@ plot_umap_gg <- function(colour_by = "cell_type") {
   uri
 }
 
+# ---- stacked violin -------------------------------------------------------
+# Rebuilds the polygons from the densities biov_violin() estimated, rather than
+# calling geom_violin on the raw values. geom_violin would re-estimate with its
+# own bandwidth, and the two engines would then draw different curves from one
+# dataset.
+plot_violin_gg <- function(n_genes = 8L) {
+  vd <- biov_violin(n_genes)
+  n <- vd$gridN
+  dm <- matrix(vd$density, ncol = n, byrow = TRUE)
+  cols <- stats::setNames(vd$clusterColors, vd$clusters)
+
+  gm <- matrix(vd$grids, ncol = n, byrow = TRUE)
+  poly <- do.call(rbind, lapply(seq_len(nrow(dm)), function(i) {
+    row <- dm[i, ]
+    grid_i <- gm[match(vd$feature[i], vd$genes), ]
+    # Scale within the gene's row so clusters stay comparable inside a gene,
+    # matching the component's default.
+    gi <- match(vd$feature[i], vd$genes)
+    rows_of_gene <- which(vd$feature == vd$feature[i])
+    rmax <- max(dm[rows_of_gene, ], na.rm = TRUE)
+    if (!is.finite(rmax) || rmax <= 0) rmax <- 1
+    w <- row / rmax
+    ci <- match(vd$cluster[i], vd$clusters)
+    data.frame(
+      # x is the cluster centre plus the mirrored density.
+      x = c(ci + 0.42 * w, rev(ci - 0.42 * w)),
+      y = c(grid_i, rev(grid_i)),
+      id = i,
+      feature = factor(vd$feature[i], levels = vd$genes),
+      cluster = factor(vd$cluster[i], levels = vd$clusters),
+      stringsAsFactors = FALSE
+    )
+  }))
+
+  meds <- data.frame(
+    feature = factor(vd$feature, levels = vd$genes),
+    cluster = factor(vd$cluster, levels = vd$clusters),
+    ci = match(vd$cluster, vd$clusters),
+    med = vd$median
+  )
+
+  p <- ggplot2::ggplot(poly, ggplot2::aes(x, y, group = id, fill = cluster)) +
+    ggplot2::geom_polygon(colour = NA, alpha = 0.85) +
+    ggplot2::geom_segment(data = meds,
+      ggplot2::aes(x = ci - 0.15, xend = ci + 0.15, y = med, yend = med),
+      colour = "#FBF7EF", linewidth = 0.5, inherit.aes = FALSE) +
+    ggplot2::scale_fill_manual(values = cols, guide = "none", drop = FALSE) +
+    ggplot2::scale_x_continuous(
+      breaks = seq_along(vd$clusters), labels = vd$clusters,
+      limits = c(0.4, length(vd$clusters) + 0.6), expand = ggplot2::expansion(0)) +
+    # scales = "free_y" so each gene keeps its own range, matching the
+    # component's per-row grids.
+    ggplot2::facet_grid(rows = ggplot2::vars(feature), switch = "y",
+                        scales = "free_y") +
+    ggplot2::labs(x = NULL, y = "log1p CP10K") +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 9),
+      axis.text.y = ggplot2::element_text(size = 7),
+      strip.text.y.left = ggplot2::element_text(angle = 0, size = 9, hjust = 1),
+      strip.background = ggplot2::element_blank(),
+      panel.spacing.y = ggplot2::unit(1, "pt"),
+      panel.grid.major.x = ggplot2::element_blank()
+    )
+  gg_data_uri(p, width = 900, height = 700)
+}
+
 # ---- UpSet: driver co-occurrence -----------------------------------------
 # Three panels sharing one discrete x (the intersections) and one discrete y
 # (the genes), aligned with patchwork. The intersection order and membership

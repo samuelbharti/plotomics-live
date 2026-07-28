@@ -42,6 +42,7 @@ server <- function(input, output, session) {
   surv_gene <- reactive(if (is.null(input$surv_gene)) "TP53" else input$surv_gene)
   dot_scale <- reactive(if (is.null(input$dot_scale)) "gene" else input$dot_scale)
   upset_n <- reactive(if (is.null(input$upset_genes)) 8L else as.integer(input$upset_genes))
+  violin_n <- reactive(if (is.null(input$violin_genes)) 8L else as.integer(input$violin_genes))
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
@@ -129,6 +130,27 @@ server <- function(input, output, session) {
   output$umap_png <- reactive_output({
     uri <- plot_umap_gg(colour_by = umap_by())
     list(uri = unclass(uri), n = attr(uri, "n"), secs = attr(uri, "secs"))
+  })
+
+  # ---- STACKED VIOLIN ------------------------------------------------------
+  # Densities are estimated once here on a per-gene grid; both engines draw
+  # those curves rather than re-estimating with their own bandwidth.
+  output$violin_data <- reactive_output({
+    v <- biov_violin(violin_n())
+    list(
+      columns = list(feature = v$feature, group = v$cluster),
+      meta = list(grid = v$grid, grids = v$grids, density = v$density,
+                  features = v$genes, groups = v$clusters,
+                  groupColors = v$clusterColors, median = v$median)
+    )
+  })
+  output$violin_png <- reactive_output({
+    plot_violin_gg(violin_n())
+  })
+  output$violin_stats <- reactive_output({
+    v <- biov_violin(violin_n())
+    list(genes = v$nGenes, clusters = v$nClusters, spots = v$nSpots,
+         gridN = v$gridN, dataset = v$dataset)
   })
 
   # ---- UPSET ---------------------------------------------------------------
