@@ -390,6 +390,88 @@ plot_oncoplot_gg <- function(n_genes = 25L) {
   gg_data_uri(pw, width = 1020, height = 780)
 }
 
+# ---- protein domain lollipop ----------------------------------------------
+# One panel, two independent discrete scales: `fill` carries the domains and
+# `colour` the variant classes, which avoids needing ggnewscale. The domain and
+# PTM tracks live below zero on the same y axis, with clipping off so they can
+# sit outside the panel range. Labels come from biov_lollipop()'s labelRows, so
+# ggrepel labels exactly the variants the canvas labels.
+plot_lollipop_gg <- function(gene = "TP53") {
+  l <- biov_lollipop(gene)
+  if (is.null(l)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = paste("No variants for", gene),
+                        colour = "#233038") + ggplot2::theme_void()))
+  }
+  d <- data.frame(pos = l$position, count = l$count,
+                  cls = factor(l$class, levels = as.character(l$classes)),
+                  label = l$label, stringsAsFactors = FALSE)
+  top <- max(c(d$count, 1))
+  base <- -0.14 * top
+  hgt <- 0.11 * top
+  dm <- data.frame(name = factor(l$domainNames, levels = unique(l$domainNames)),
+                   start = l$domainStart, end = l$domainEnd)
+  dm$mid <- (dm$start + dm$end) / 2
+
+  p <- ggplot2::ggplot() +
+    # backbone
+    ggplot2::annotate("rect", xmin = 1, xmax = l$length,
+                      ymin = base + hgt * 0.32, ymax = base + hgt * 0.68,
+                      fill = "#E6DCC8") +
+    ggplot2::geom_rect(data = dm,
+                       ggplot2::aes(xmin = start, xmax = end,
+                                    ymin = base, ymax = base + hgt,
+                                    fill = name)) +
+    ggplot2::geom_segment(data = d,
+                          ggplot2::aes(x = pos, xend = pos, y = 0, yend = count),
+                          colour = "#93a1b8", linewidth = 0.4) +
+    ggplot2::geom_point(data = d,
+                        ggplot2::aes(x = pos, y = count, colour = cls,
+                                     size = count), alpha = 0.92) +
+    ggrepel::geom_text_repel(
+      data = d[l$labelRows, , drop = FALSE],
+      ggplot2::aes(x = pos, y = count, label = label),
+      size = 3, colour = "#233038", direction = "y", nudge_y = top * 0.07,
+      segment.colour = "#C9C1B1", segment.size = 0.25,
+      max.overlaps = Inf, seed = 3) +
+    ggplot2::scale_fill_manual(
+      values = stats::setNames(as.character(l$domainColors),
+                               levels(dm$name)), name = "Domain") +
+    ggplot2::scale_colour_manual(
+      values = stats::setNames(as.character(l$classColors),
+                               as.character(l$classes)),
+      drop = FALSE, name = "Variant") +
+    ggplot2::scale_size_area(max_size = 8, guide = "none") +
+    # Padded on both axes so a repelled label on the tallest stem, or on a
+    # variant near residue 1 or the C-terminus, has somewhere to go instead of
+    # riding the panel edge.
+    ggplot2::scale_x_continuous(limits = c(0, l$length),
+                                expand = ggplot2::expansion(mult = 0.045)) +
+    ggplot2::labs(x = sprintf("%s (%s) - amino-acid position", l$gene, l$uniprot),
+                  y = "samples") +
+    biov_theme(base_size = 12) +
+    ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(),
+                   plot.margin = ggplot2::margin(14, 16, 6, 8))
+
+  if (length(l$ptmPosition)) {
+    ptm <- data.frame(pos = l$ptmPosition, type = l$ptmType)
+    p <- p +
+      ggplot2::geom_segment(data = ptm,
+                            ggplot2::aes(x = pos, xend = pos,
+                                         y = base - 0.30 * hgt,
+                                         yend = base - 0.05 * hgt),
+                            colour = "#8A9384", linewidth = 0.3) +
+      ggplot2::geom_point(data = ptm,
+                          ggplot2::aes(x = pos, y = base - 0.40 * hgt),
+                          shape = 17, size = 1.4, colour = "#6E7B72")
+  }
+  # clip = "off" lets the domain and PTM tracks sit below the panel range; the
+  # generous upper bound is headroom for the repelled labels.
+  p <- p + ggplot2::coord_cartesian(
+    ylim = c(base - 0.55 * hgt, top * 1.26), clip = "off")
+  gg_data_uri(p, width = 1000, height = 560)
+}
+
 # ---- AlphaFold predicted aligned error (PAE) ------------------------------
 # Same binned matrix the React engine gets, on the same LTC ramp with the same
 # limits, so the two renderings are the same picture in two engines.

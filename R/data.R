@@ -523,6 +523,106 @@ biov_oncoplot <- local({
   }
 })
 
+# ---- protein domain lollipop ----------------------------------------------
+# Three real layers over one protein: mutation stems from the same cBioPortal
+# TCGA-BRCA fetch the oncoplot uses, Pfam domain rectangles from InterPro, and
+# PTM sites from UniProt (see data/prep/prepare-protein-tracks.R).
+biov_protein_domains <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("protein_domains.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+biov_protein_ptm <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("protein_ptm.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+biov_lollipop_variants <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      cache <<- utils::read.csv(.data_path("brca_lollipop.csv"),
+                                stringsAsFactors = FALSE)
+    }
+    cache
+  }
+})
+
+# Genes that have both a domain architecture and variants to show, most
+# variant-rich first (drives the picker order).
+biov_lollipop_genes <- function() {
+  d <- biov_protein_domains()
+  v <- biov_lollipop_variants()
+  g <- intersect(unique(d$gene), unique(v$gene))
+  tot <- stats::aggregate(count ~ gene, data = v[v$gene %in% g, ], FUN = sum)
+  tot$gene[order(-tot$count)]
+}
+
+biov_lollipop <- local({
+  cache <- new.env(parent = emptyenv())
+  function(gene = "TP53", label_top_n = 12L) {
+    hit <- cache[[gene]]
+    if (!is.null(hit)) return(hit)
+
+    dom <- biov_protein_domains()
+    dom <- dom[dom$gene == gene, , drop = FALSE]
+    if (!nrow(dom)) return(NULL)
+    plen <- dom$length[1]
+    uniprot <- dom$uniprot[1]
+
+    v <- biov_lollipop_variants()
+    v <- v[v$gene == gene & v$residue >= 1 & v$residue <= plen, , drop = FALSE]
+    if (!nrow(v)) return(NULL)
+    # Several distinct protein changes can hit one residue; keep them separate
+    # so the classes stay honest, but order by position for the label stacking.
+    v <- v[order(v$residue, -v$count), ]
+
+    classes <- names(biov_variant_colours())
+    classes <- classes[classes %in% unique(v$class)]
+
+    ptm <- biov_protein_ptm()
+    ptm <- ptm[ptm$gene == gene, , drop = FALSE]
+
+    # Resolve the labelled stems ONCE so ggrepel and the canvas label the same
+    # variants. 0-based for the client, 1-based for the ggplot side.
+    top <- order(-v$count)[seq_len(min(label_top_n, nrow(v)))]
+    top <- sort(top)
+
+    out <- list(
+      gene = gene, uniprot = uniprot, length = plen,
+      position = v$residue, count = v$count,
+      class = v$class, label = v$protein_change,
+      labelRows = top,
+      labelIndex = I(as.integer(top - 1L)),
+      classes = I(classes),
+      classColors = I(unname(biov_variant_colours()[classes])),
+      domains = lapply(seq_len(nrow(dom)), function(i) {
+        list(name = dom$name[i], start = dom$start[i], end = dom$end[i])
+      }),
+      domainNames = dom$name, domainStart = dom$start, domainEnd = dom$end,
+      domainColors = I(biov_categorical(nrow(dom))),
+      ptms = if (nrow(ptm)) lapply(seq_len(nrow(ptm)), function(i) {
+        list(position = ptm$position[i], type = ptm$type[i])
+      }) else list(),
+      ptmPosition = ptm$position, ptmType = ptm$type,
+      nVariants = nrow(v), nSamples = sum(v$count))
+    cache[[gene]] <- out
+    out
+  }
+})
+
 # ---- AlphaFold predicted aligned error (PAE) ------------------------------
 # The other half of an AlphaFold prediction. Entry (x, y) is the expected
 # position error at residue x when the prediction is superposed on residue y.

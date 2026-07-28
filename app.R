@@ -33,6 +33,7 @@ server <- function(input, output, session) {
   prot_acc <- reactive(if (is.null(input$protein_uniprot)) "P04637" else input$protein_uniprot)
   prot_res <- reactive(input$protein_residue)
   onco_n <- reactive(if (is.null(input$onco_genes)) 25L else as.integer(input$onco_genes))
+  lolli_gene <- reactive(if (is.null(input$lolli_gene)) "TP53" else input$lolli_gene)
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
@@ -218,6 +219,31 @@ server <- function(input, output, session) {
     list(genes = o$nrows, samples = o$ncols, cohort = o$cohort,
          altered = o$altered, events = sum(o$tmb),
          medianTmb = stats::median(o$tmb))
+  })
+
+  # ---- PROTEIN DOMAIN LOLLIPOP ---------------------------------------------
+  # labelIndex is resolved in biov_lollipop() and sent to the client, so the
+  # canvas and ggrepel label the same variants rather than each picking a top-N.
+  output$lollipop_genes <- reactive_output({ I(biov_lollipop_genes()) })
+  output$lollipop_data <- reactive_output({
+    l <- biov_lollipop(lolli_gene())
+    if (is.null(l)) return(NULL)
+    list(
+      columns = list(position = l$position, count = l$count,
+                     class = l$class, label = l$label),
+      meta = list(length = l$length, gene = l$gene, uniprot = l$uniprot,
+                  classes = l$classes, classColors = l$classColors,
+                  domains = l$domains, domainColors = l$domainColors,
+                  ptms = l$ptms, labelIndex = l$labelIndex)
+    )
+  })
+  output$lollipop_png <- reactive_output({ plot_lollipop_gg(lolli_gene()) })
+  output$lollipop_stats <- reactive_output({
+    l <- biov_lollipop(lolli_gene())
+    if (is.null(l)) return(NULL)
+    list(gene = l$gene, uniprot = l$uniprot, length = l$length,
+         variants = l$nVariants, samples = l$nSamples,
+         domains = length(l$domains), ptms = length(l$ptms))
   })
 
   # ---- ALPHAFOLD PAE -------------------------------------------------------

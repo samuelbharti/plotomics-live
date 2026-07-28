@@ -35,6 +35,9 @@ export const VIZ: CardDef[] = [
   { to: "/pae", key: "pae", title: "AlphaFold PAE matrix",
     desc: "Predicted aligned error: which parts of a structure are confidently placed relative to each other. Domain blocks the pLDDT profile cannot show.",
     engines: ["react", "ggplot"] },
+  { to: "/lollipop", key: "lollipop", title: "Domain lollipop",
+    desc: "Variants along a protein over its Pfam architecture, with PTM sites. TP53 piles into the DNA-binding domain; CDH1 is truncated across its cadherin repeats.",
+    engines: ["react", "ggplot"] },
   { to: "/manhattan", key: "manhattan", title: "Manhattan + QQ (GWAS)",
     desc: "Genome-wide association: -log10 p for 50,000 SNPs along the genome with a significance line, plus a Q-Q plot.",
     engines: ["react", "ggplot"] },
@@ -70,7 +73,7 @@ export default function Home() {
       <div className="hero">
         <h1><span className="accent">Plotomics</span> Live</h1>
         <p>
-          Plotomics, made interactive. Seventeen visualizations of real biological datasets,
+          Plotomics, made interactive. Eighteen visualizations of real biological datasets,
           each rendered two ways - a classic <b>ggplot2</b> image and an interactive
           <b> Shiny&nbsp;React</b> (TSX) component powered by plotomics / WebGL. Pick a
           visualization, then flip the engine toggle to compare. The headline is the

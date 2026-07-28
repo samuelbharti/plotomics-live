@@ -78,6 +78,18 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Domain lollipop",
+    what: "Where the TCGA-BRCA variants land on six driver proteins, drawn over their Pfam domain architecture with UniProt modification sites underneath. The contrast between genes is the point: all five of TP53's top hotspots fall inside its DNA-binding domain, while CDH1 is truncated across its cadherin repeats.",
+    react: "plotomics lollipop: backbone, domain rectangles, stems and PTM ticks on a canvas, with labels, axis and legend as an SVG overlay. Head area scales with recurrence.",
+    ggplot: "one ggplot2 panel using two independent discrete scales, fill for domains and colour for variant classes, with the domain and PTM tracks below zero and clipping off.",
+    data: "Variant positions from the same cBioPortal TCGA-BRCA fetch as the oncoplot (proteinPosStart). Pfam domains from the InterPro REST API (CC0), PTM sites from UniProtKB MOD_RES features (CC BY 4.0). Which stems get a text label is resolved server-side, so ggrepel and the canvas label the same variants rather than each picking its own top-N. Note that PIK3CA's H1047R sits just past the end of Pfam PF00454 (798-1015); the plot shows Pfam's boundary rather than the wider UniProt kinase-domain range.",
+    refs: [
+      { label: "Paysan-Lafosse et al., Nucleic Acids Res (2023) - InterPro", href: "https://doi.org/10.1093/nar/gkac993" },
+      { label: "UniProt Consortium, Nucleic Acids Res (2023) - UniProt", href: "https://doi.org/10.1093/nar/gkac1052" },
+      { label: "Mermel et al., Genome Biol 12:R41 (2011) - GISTIC2", href: "https://doi.org/10.1186/gb-2011-12-4-r41" },
+    ],
+  },
+  {
     title: "AlphaFold PAE matrix",
     what: "The predicted aligned error matrix for the same BRCA driver proteins: entry (x, y) is the expected position error at residue x when the prediction is superposed on residue y. Dark diagonal blocks are confidently-folded domains; a bright block between two dark ones means both domains are individually confident but their relative orientation is not.",
     react: "plotomics heatmap (WebGL) on the residue × residue matrix, plus a canvas profile of a single row.",
@@ -187,7 +199,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across seventeen common biological visualizations.
+            compare the two approaches across eighteen common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>
