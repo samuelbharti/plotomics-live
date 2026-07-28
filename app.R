@@ -45,6 +45,10 @@ server <- function(input, output, session) {
   violin_n <- reactive(if (is.null(input$violin_genes)) 8L else as.integer(input$violin_genes))
   pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
   pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
+  pca_view <- reactive(if (is.null(input$pca_view)) "scores" else input$pca_view)
+  pca_x <- reactive(if (is.null(input$pca_x)) 1L else as.integer(input$pca_x))
+  pca_y <- reactive(if (is.null(input$pca_y)) 2L else as.integer(input$pca_y))
+  pca_load_n <- reactive(if (is.null(input$pca_load_n)) 20L else as.integer(input$pca_load_n))
 
   # ---- VOLCANO -------------------------------------------------------------
   output$volcano_data <- reactive_output({
@@ -172,6 +176,46 @@ server <- function(input, output, session) {
     list(total = u$total, altered = u$altered, unaltered = u$unaltered,
          intersections = u$nIntersections, shown = u$shown,
          pairs = u$pairs)
+  })
+
+  # ---- PCA EXPLORER --------------------------------------------------------
+  # One decomposition, three views. The view is server-side state so the PNG
+  # and the interactive component can never end up showing different panels.
+  # The loadings view keys off the x-axis component, which is what makes
+  # "which genes drive this axis" answerable without a second control.
+  output$pca_data <- reactive_output({
+    v <- pca_view()
+    if (identical(v, "scree")) {
+      s <- biov_pca_scree(10L)
+      list(columns = list(value = s$value, label = s$label), meta = list())
+    } else if (identical(v, "loadings")) {
+      l <- biov_pca_loadings(pca_x(), pca_load_n())
+      list(
+        columns = list(value = l$value, label = l$label, group = l$group),
+        meta = list(groups = l$groups,
+                    groupColors = unname(biov_categorical(4)[c(1, 4)]))
+      )
+    } else {
+      s <- biov_pca_scores(pca_x(), pca_y())
+      list(columns = list(x = s$x, y = s$y, color = s$color, label = s$label))
+    }
+  })
+  output$pca_png <- reactive_output({
+    plot_pca_gg(pca_view(), pca_x(), pca_y(), pca_x(), pca_load_n())
+  })
+  output$pca_stats <- reactive_output({
+    p <- biov_pca()
+    s <- biov_pca_scree(10L)
+    sc <- biov_pca_scores(pca_x(), pca_y())
+    list(
+      view = pca_view(), npc = p$npc, nGenes = length(p$genes),
+      nSamples = length(p$samples),
+      pcX = sc$pcX, pcY = sc$pcY,
+      xLabel = sc$xLabel, yLabel = sc$yLabel,
+      varX = round(100 * p$var_exp[sc$pcX], 1),
+      varY = round(100 * p$var_exp[sc$pcY], 1),
+      cum2 = round(s$cumulative[min(2L, length(s$cumulative))], 1)
+    )
   })
 
   # ---- MARKER DOT PLOT -----------------------------------------------------

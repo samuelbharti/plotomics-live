@@ -112,6 +112,17 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "PCA explorer",
+    what: "Principal component analysis of the 2,000 most variable genes across 40 TCGA breast samples, read three ways: sample scores on any pair of components, a scree plot of variance explained with the cumulative curve, and the genes loading a chosen component.",
+    react: "plotomics embedding for the scores (canvas points, categorical colour) and plotomics profile for the scree and loadings bars. The factory swaps with the view rather than one component pretending to be both.",
+    ggplot: "geom_point with a normal-theory stat_ellipse for the scores, geom_col plus a cumulative geom_line for the scree, and a coord_flip'd geom_col for the loadings. The ellipse is only drawn where every group has at least four samples, since it would error rather than degrade below that.",
+    data: "The same TCGA-BRCA VST expression matrix as the volcano and heatmap, 20 tumour and 20 normal. Two choices are worth stating. Genes are centred but not scaled: these are variance-stabilised counts, and scaling to unit variance would give a barely expressed gene the same vote as a strong marker. And only 39 components are kept, not 40, because centring 40 samples leaves 39 real ones and the last is numerical dust that would draw as a spurious zero-height bar. PC1 carries 33.8% and separates tumour from normal at p = 2e-15, loading positively on MMP11 and COL10A1 (invasion and stroma) and negatively on ADH1B, ADIPOQ, FABP4 and PLIN4, which is the adipose tissue that normal breast is full of and tumour displaces.",
+    refs: [
+      { label: "Ringnér, Nat Biotechnol 26:303-304 (2008) - what is PCA?", href: "https://doi.org/10.1038/nbt0308-303" },
+      { label: "Love et al., Genome Biol 15:550 (2014) - DESeq2 and the VST", href: "https://doi.org/10.1186/s13059-014-0550-8" },
+    ],
+  },
+  {
     title: "Stacked violin",
     what: "Full expression distributions for eight genes across the 11 Visium spatial clusters, one row per gene, each row on its own y range with a median tick.",
     react: "plotomics violin: densities on canvas, labels and axes as an SVG overlay. The component draws densities but does not estimate them, so bandwidth choice stays with the data.",
@@ -280,7 +291,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across twenty-five common biological visualizations.
+            compare the two approaches across twenty-six common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

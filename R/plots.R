@@ -1088,3 +1088,87 @@ plot_xenium_gg <- function(colour_by = "class") {
   attr(uri, "secs") <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 2)
   uri
 }
+
+# ---- PCA explorer ---------------------------------------------------------
+# Three views off one decomposition. Which one renders is the caller's choice
+# and matches the React side exactly, so the engine toggle never swaps the
+# figure out from under the reader.
+plot_pca_gg <- function(view = "scores", pc_x = 1L, pc_y = 2L,
+                        pc = 1L, n_load = 20L) {
+  if (identical(view, "scree")) return(.pca_scree_gg())
+  if (identical(view, "loadings")) return(.pca_loadings_gg(pc, n_load))
+  .pca_scores_gg(pc_x, pc_y)
+}
+
+.pca_scores_gg <- function(pc_x = 1L, pc_y = 2L) {
+  s <- biov_pca_scores(pc_x, pc_y)
+  df <- data.frame(x = s$x, y = s$y, group = s$color, label = s$label,
+                   stringsAsFactors = FALSE)
+  lev <- sort(unique(df$group))
+  cols <- stats::setNames(biov_categorical(length(lev)), lev)
+  df$group <- factor(df$group, levels = lev)
+
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, colour = group)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#E6DCC8") +
+    ggplot2::geom_vline(xintercept = 0, colour = "#E6DCC8") +
+    ggplot2::geom_point(size = 3, alpha = 0.85) +
+    ggplot2::scale_colour_manual(values = cols, limits = lev, drop = FALSE) +
+    ggplot2::labs(x = s$xLabel, y = s$yLabel, colour = NULL) +
+    # Both axes are in the same units, so one unit must be one unit in either
+    # direction. Without this a component explaining 4% is stretched to fill
+    # the panel and reads as though it mattered as much as one explaining 34%.
+    # It matches aspect = "equal" on the React side.
+    ggplot2::coord_fixed(ratio = 1) +
+    biov_theme()
+  # An ellipse needs more points than parameters; with a tiny stratum it would
+  # fail rather than degrade, so it is only added where every group can carry one.
+  if (all(table(df$group) >= 4L)) {
+    p <- p + ggplot2::stat_ellipse(ggplot2::aes(fill = group), geom = "polygon",
+                                   alpha = 0.08, colour = NA, type = "norm",
+                                   show.legend = FALSE) +
+      ggplot2::scale_fill_manual(values = cols, limits = lev, drop = FALSE)
+  }
+  # Squarer than the other views: coord_fixed leaves side margins in a wide
+  # panel, so a wide canvas would just be drawing whitespace.
+  gg_data_uri(p, width = 740, height = 640)
+}
+
+.pca_scree_gg <- function(n = 10L) {
+  s <- biov_pca_scree(n)
+  df <- data.frame(pc = factor(s$label, levels = s$label),
+                   value = s$value, cum = s$cumulative)
+  cols <- biov_categorical(2)
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = pc)) +
+    ggplot2::geom_col(ggplot2::aes(y = value), fill = cols[1], width = 0.62) +
+    # Both series are percentages, so they share one axis honestly rather than
+    # needing a second scale the reader has to reconcile.
+    ggplot2::geom_line(ggplot2::aes(y = cum, group = 1), colour = cols[2],
+                       linewidth = 0.9) +
+    ggplot2::geom_point(ggplot2::aes(y = cum), colour = cols[2], size = 2.2) +
+    ggplot2::scale_y_continuous(limits = c(0, 100),
+                                labels = function(v) paste0(v, "%")) +
+    ggplot2::labs(x = NULL, y = "variance explained") +
+    biov_theme()
+  gg_data_uri(p, width = 900, height = 560)
+}
+
+.pca_loadings_gg <- function(pc = 1L, n = 20L) {
+  l <- biov_pca_loadings(pc, n)
+  df <- data.frame(gene = factor(l$label, levels = rev(l$label)),
+                   value = l$value,
+                   dir = factor(l$group, levels = c("positive", "negative")),
+                   stringsAsFactors = FALSE)
+  cols <- stats::setNames(biov_categorical(4)[c(1, 4)],
+                          c("positive", "negative"))
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = gene, y = value, fill = dir)) +
+    ggplot2::geom_col(width = 0.7) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#6E7B72", linewidth = 0.3) +
+    ggplot2::scale_fill_manual(values = cols, limits = names(cols),
+                               drop = FALSE) +
+    ggplot2::coord_flip() +
+    ggplot2::labs(x = NULL, fill = NULL,
+                  y = sprintf("PC%d loading (%.1f%% of variance)",
+                              l$pc, l$varExp)) +
+    biov_theme()
+  gg_data_uri(p, width = 900, height = 640)
+}
