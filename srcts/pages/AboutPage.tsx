@@ -65,6 +65,18 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "AlphaFold PAE matrix",
+    what: "The predicted aligned error matrix for the same BRCA driver proteins: entry (x, y) is the expected position error at residue x when the prediction is superposed on residue y. Dark diagonal blocks are confidently-folded domains; a bright block between two dark ones means both domains are individually confident but their relative orientation is not.",
+    react: "plotomics heatmap (WebGL) on the residue × residue matrix, plus a canvas profile of a single row.",
+    ggplot: "geom_raster on the same matrix with the same LTC ramp and the same colour limits, plus a geom_area profile.",
+    data: "AlphaFold DB predicted aligned error (JSON), fetched live by UniProt accession and cached. The file URL is resolved from the AlphaFold API rather than hardcoded, since the model version has already moved from v4 to v6. Matrices larger than 400 residues per side are block-averaged before plotting, and the binning factor is shown in the control bar; both engines plot the binned matrix so they cannot disagree.",
+    refs: [
+      { label: "Jumper et al., Nature 596:583–589 (2021) - AlphaFold", href: "https://doi.org/10.1038/s41586-021-03819-2" },
+      { label: "Varadi et al., Nucleic Acids Res (2022) - AlphaFold Protein Structure Database", href: "https://doi.org/10.1093/nar/gkab1061" },
+      { label: "AlphaFold DB FAQ - interpreting PAE", href: "https://alphafold.ebi.ac.uk/faq" },
+    ],
+  },
+  {
     title: "Genome browser (IGV)",
     what: "The breast-cancer somatic variants along the genome (hg19), as a live genome browser and as a variant needle/lollipop plot.",
     react: "igv.js embedded as a TSX component (via plotomics igv); the hg19 reference is streamed from igv.js's data servers, with an inline track of the variants.",
@@ -162,7 +174,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across fifteen common biological visualizations.
+            compare the two approaches across sixteen common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

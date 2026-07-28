@@ -13,6 +13,7 @@ import TahoePage from "./pages/TahoePage";
 import NetworkPage from "./pages/NetworkPage";
 import IgvPage from "./pages/IgvPage";
 import ProteinPage from "./pages/ProteinPage";
+import PaePage from "./pages/PaePage";
 import ManhattanPage from "./pages/ManhattanPage";
 import EqtlPage from "./pages/EqtlPage";
 import AtacPage from "./pages/AtacPage";
@@ -84,6 +85,7 @@ function Shell() {
         <Route path="/network" element={<NetworkPage />} />
         <Route path="/igv" element={<IgvPage />} />
         <Route path="/protein" element={<ProteinPage />} />
+        <Route path="/pae" element={<PaePage />} />
         <Route path="/manhattan" element={<ManhattanPage />} />
         <Route path="/eqtl" element={<EqtlPage />} />
         <Route path="/atac" element={<AtacPage />} />

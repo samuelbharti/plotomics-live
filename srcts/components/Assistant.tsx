@@ -32,6 +32,10 @@ const KB: Viz[] = [
     what: "an interactive 3-D structure (AlphaFold) plus a per-residue confidence profile.",
     capacity: "one structure at a time (thousands of atoms), fetched live from AlphaFold.",
     pick: "you want to inspect a protein's 3-D fold, domains, or a variant residue." },
+  { route: "/pae", name: "AlphaFold PAE matrix", kw: ["pae", "predicted aligned error", "alphafold", "confidence", "domain", "orientation", "contact map", "structure quality", "multimer", "rigid body"],
+    what: "the residue x residue predicted aligned error matrix from an AlphaFold prediction.",
+    capacity: "proteins of a few thousand residues; larger matrices are block-averaged before plotting.",
+    pick: "you want to know whether two confident domains are confidently placed relative to each other." },
   { route: "/igv", name: "Genome browser (IGV)", kw: ["genome", "browser", "igv", "locus", "bam", "vcf", "bed", "bigwig", "track", "variant", "mutation position", "coordinate"],
     what: "a live genome browser (igv.js) plus a variant needle/lollipop plot.",
     capacity: "streams indexed tracks (BAM/VCF/bigWig) on demand - effectively unbounded via tiling.",
@@ -77,7 +81,7 @@ const KB: Viz[] = [
 type Msg = { role: "user" | "bot"; text: string; recs?: string[] };
 
 const INTRO =
-  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the fifteen visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
+  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the sixteen visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
 
 function findViz(q: string): Viz[] {
   const s = q.toLowerCase();
@@ -119,7 +123,7 @@ function answer(q: string): Msg {
   // about / what is this
   if (/(what is|about|who|why|explain the app|purpose|how does this work|engine|ggplot|shiny react|two ways)/.test(s)) {
     return { role: "bot", text:
-      "Plotomics Live shows fifteen common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
+      "Plotomics Live shows sixteen common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
   }
 
   // specific visualization info
@@ -130,7 +134,7 @@ function answer(q: string): Msg {
   }
 
   return { role: "bot", text:
-    "I can help with what this app is, any of the fifteen visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
+    "I can help with what this app is, any of the sixteen visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
 }
 
 const CHIPS = [

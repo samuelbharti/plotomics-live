@@ -29,6 +29,9 @@ export const VIZ: CardDef[] = [
   { to: "/protein", key: "protein", title: "Protein structure",
     desc: "Interactive 3D AlphaFold structures (3Dmol.js) vs a ggplot2 per-residue pLDDT confidence profile.",
     engines: ["react", "ggplot"] },
+  { to: "/pae", key: "pae", title: "AlphaFold PAE matrix",
+    desc: "Predicted aligned error: which parts of a structure are confidently placed relative to each other. Domain blocks the pLDDT profile cannot show.",
+    engines: ["react", "ggplot"] },
   { to: "/manhattan", key: "manhattan", title: "Manhattan + QQ (GWAS)",
     desc: "Genome-wide association: -log10 p for 50,000 SNPs along the genome with a significance line, plus a Q-Q plot.",
     engines: ["react", "ggplot"] },
@@ -64,7 +67,7 @@ export default function Home() {
       <div className="hero">
         <h1><span className="accent">Plotomics</span> Live</h1>
         <p>
-          Plotomics, made interactive. Fifteen visualizations of real biological datasets,
+          Plotomics, made interactive. Sixteen visualizations of real biological datasets,
           each rendered two ways - a classic <b>ggplot2</b> image and an interactive
           <b> Shiny&nbsp;React</b> (TSX) component powered by plotomics / WebGL. Pick a
           visualization, then flip the engine toggle to compare. The headline is the

@@ -1,6 +1,6 @@
 # Plotomics Live — biological visualizations, two ways
 
-A Shiny **React** (TSX) app that shows fifteen biological-data visualizations, each
+A Shiny **React** (TSX) app that shows sixteen biological-data visualizations, each
 rendered **two ways** so you can compare them side by side via an engine toggle:
 
 - **Shiny React** — an interactive, GPU-accelerated TSX component (plotomics /
@@ -25,6 +25,7 @@ always visualize the *same* server-side computation.
 | Gene network | plotomics `network` (sigma/WebGL, ~1.5k nodes / 7.4k edges) | igraph layout + ggplot2 |
 | Genome browser (IGV) | igv.js (hg19 + variant track) | ggplot2 variant needle plot |
 | Protein structure | 3Dmol.js (AlphaFold, coloured by pLDDT) | ggplot2 per-residue pLDDT profile |
+| AlphaFold PAE matrix | plotomics `heatmap` (residue × residue error) + canvas row profile | ggplot2 `geom_raster` + `geom_area` profile |
 | Manhattan + QQ (GWAS) | canvas-2D scatter with a chromosome axis | ggplot2 by chromosome + QQ |
 | eQTL / pQTL effect map | plotomics `heatmap` (diverging β) | ggplot2 `geom_tile` |
 | Single-cell ATAC coverage | canvas-2D per-cluster coverage tracks | ggplot2 faceted `geom_area` |

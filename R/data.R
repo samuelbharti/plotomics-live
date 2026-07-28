@@ -422,3 +422,100 @@ biov_eqtl <- local({
          rowLabels = rownames(m), colLabels = colnames(m))
   }
 })
+
+# ---- AlphaFold predicted aligned error (PAE) ------------------------------
+# The other half of an AlphaFold prediction. Entry (x, y) is the expected
+# position error at residue x when the prediction is superposed on residue y.
+# Low blocks along the diagonal are confidently-folded domains; a high
+# off-diagonal block between two low blocks means both domains are individually
+# confident but their relative orientation is not. That is the read the pLDDT
+# profile on the protein page cannot give you.
+
+# AlphaFold bumps its model version periodically (v4 is already retired and
+# returns 404), so ask the API for the current file URLs instead of guessing.
+# Falls back to the known v6 pattern when the API is unreachable, and caches
+# per accession so an offline session pays the timeout once.
+.af_urls <- local({
+  cache <- new.env(parent = emptyenv())
+  function(uniprot) {
+    hit <- cache[[uniprot]]
+    if (!is.null(hit)) return(hit)
+    urls <- list(
+      pdb = sprintf("https://alphafold.ebi.ac.uk/files/AF-%s-F1-model_v6.pdb", uniprot),
+      pae = sprintf("https://alphafold.ebi.ac.uk/files/AF-%s-F1-predicted_aligned_error_v6.json",
+                    uniprot))
+    tmp <- tempfile(fileext = ".json")
+    on.exit(unlink(tmp), add = TRUE)
+    old <- options(timeout = 15); on.exit(options(old), add = TRUE)
+    # A miss here is expected and handled (we fall back to the v6 pattern), so
+    # don't let download.file's warning reach the Shiny console.
+    got <- suppressWarnings(try(utils::download.file(
+      sprintf("https://alphafold.ebi.ac.uk/api/prediction/%s", uniprot),
+      tmp, mode = "wb", quiet = TRUE), silent = TRUE))
+    if (!inherits(got, "try-error") && file.exists(tmp) && file.info(tmp)$size > 0) {
+      j <- try(jsonlite::fromJSON(tmp), silent = TRUE)
+      if (!inherits(j, "try-error") && is.data.frame(j) && nrow(j) >= 1) {
+        if (!is.null(j$pdbUrl)) urls$pdb <- j$pdbUrl[1]
+        if (!is.null(j$paeDocUrl)) urls$pae <- j$paeDocUrl[1]
+      }
+    }
+    cache[[uniprot]] <- urls
+    urls
+  }
+})
+
+.af_pae_path <- function(uniprot) {
+  dir.create(.data_path("raw"), showWarnings = FALSE, recursive = TRUE)
+  dest <- .data_path(file.path("raw", paste0("PAE-", uniprot, ".json")))
+  if (!file.exists(dest) || file.info(dest)$size == 0) {
+    suppressWarnings(try(
+      utils::download.file(.af_urls(uniprot)$pae, dest, mode = "wb", quiet = TRUE),
+      silent = TRUE))
+  }
+  dest
+}
+
+# Block-mean a square matrix down to at most n_max per side. PIK3CA is 1,068
+# residues, i.e. a 1.14M-cell matrix - far more than a screen can resolve or
+# than is worth pushing over the websocket. Binning is reported in the stat bar
+# rather than being applied silently, and both engines plot the binned matrix so
+# they cannot disagree.
+.bin_square <- function(m, n_max = 400L) {
+  n <- nrow(m)
+  if (n <= n_max) return(list(m = m, bin = 1L))
+  f <- ceiling(n / n_max)
+  idx <- rep(seq_len(ceiling(n / f)), each = f)[seq_len(n)]
+  k <- as.numeric(table(idx))
+  agg <- rowsum(m, idx) / k
+  list(m = t(rowsum(t(agg), idx) / k), bin = as.integer(f))
+}
+
+biov_pae <- local({
+  cache <- new.env(parent = emptyenv())
+  function(uniprot = "P04637", n_max = 400L) {
+    key <- paste0(uniprot, "_", n_max)
+    hit <- cache[[key]]
+    if (!is.null(hit)) return(hit)
+    path <- .af_pae_path(uniprot)
+    if (!file.exists(path) || file.info(path)$size == 0) return(NULL)
+    j <- try(jsonlite::fromJSON(path), silent = TRUE)
+    if (inherits(j, "try-error") || is.null(j$predicted_aligned_error)) return(NULL)
+    full <- as.matrix(j$predicted_aligned_error[[1]])
+    b <- .bin_square(full, n_max)
+    # Round the matrix ITSELF, not just the feed copy, for two reasons: both
+    # engines then plot bit-identical numbers, and the feed stays small. Shiny
+    # serializes at 16 significant digits, so an unrounded binned mean costs ~15
+    # bytes instead of ~4 (PIK3CA: 1.84 MB vs 0.47 MB). AlphaFold reports PAE as
+    # integers anyway, so 0.1 A is already finer than the source.
+    m <- round(b$m, 1)
+    n <- nrow(m)
+    # Label each binned row/col with the residue it centres on.
+    labs <- as.character(round(seq(1, nrow(full), length.out = n)))
+    out <- list(matrix = m, values = as.numeric(t(m)),
+                nrows = n, ncols = n, rowLabels = labs, colLabels = labs,
+                residues = nrow(full), bin = b$bin,
+                maxPae = as.numeric(j$max_predicted_aligned_error[1]))
+    cache[[key]] <- out
+    out
+  }
+})

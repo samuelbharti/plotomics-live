@@ -32,6 +32,8 @@ server <- function(input, output, session) {
   igv_gene <- reactive(if (is.null(input$igv_gene)) "TP53" else input$igv_gene)
   prot_acc <- reactive(if (is.null(input$protein_uniprot)) "P04637" else input$protein_uniprot)
   prot_res <- reactive(input$protein_residue)
+  pae_acc <- reactive(if (is.null(input$pae_uniprot)) "P04637" else input$pae_uniprot)
+  pae_res <- reactive(if (is.null(input$pae_residue)) NA_integer_ else as.integer(input$pae_residue))
 
   # ---- VOLCANO -------------------------------------------------------------
   output$volcano_data <- reactive_output({
@@ -192,6 +194,37 @@ server <- function(input, output, session) {
   # ---- PROTEIN (classic pLDDT profile; React side is 3Dmol) ----------------
   output$protein_plddt_png <- reactive_output({
     plot_protein_plddt_gg(prot_acc(), prot_res())
+  })
+
+  # ---- ALPHAFOLD PAE -------------------------------------------------------
+  # Both engines read the SAME binned matrix from biov_pae(); the client never
+  # talks to AlphaFold directly, so it cannot end up plotting the unbinned one.
+  output$pae_data <- reactive_output({
+    p <- biov_pae(pae_acc())
+    if (is.null(p)) return(NULL)
+    list(columns = list(values = p$values),
+         meta = list(nrows = p$nrows, ncols = p$ncols,
+                     rowLabels = p$rowLabels, colLabels = p$colLabels))
+  })
+  output$pae_profile_data <- reactive_output({
+    p <- biov_pae(pae_acc())
+    if (is.null(p)) return(NULL)
+    pos <- as.integer(p$rowLabels)
+    res <- pae_res()
+    i <- if (is.null(res) || is.na(res)) 1L else which.min(abs(pos - res))
+    list(columns = list(values = unname(p$matrix[i, ])),
+         meta = list(residue = pos[i], maxPae = p$maxPae))
+  })
+  output$pae_png <- reactive_output({ plot_pae_gg(pae_acc(), pae_res()) })
+  output$pae_profile_png <- reactive_output({
+    plot_pae_profile_gg(pae_acc(), pae_res())
+  })
+  output$pae_stats <- reactive_output({
+    p <- biov_pae(pae_acc())
+    if (is.null(p)) return(list(ok = FALSE))
+    list(ok = TRUE, residues = p$residues, binned = p$nrows, bin = p$bin,
+         cells = p$residues * p$residues, maxPae = p$maxPae,
+         mean = round(mean(p$matrix), 2))
   })
 }
 

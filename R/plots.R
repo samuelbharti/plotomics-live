@@ -248,8 +248,11 @@ plot_igv_needle_gg <- function(gene = "TP53") {
   dir.create(.data_path("raw"), showWarnings = FALSE, recursive = TRUE)
   dest <- .data_path(file.path("raw", paste0("AF-", uniprot, ".pdb")))
   if (!file.exists(dest) || file.info(dest)$size == 0) {
-    url <- sprintf("https://alphafold.ebi.ac.uk/files/AF-%s-F1-model_v6.pdb", uniprot)
-    try(utils::download.file(url, dest, mode = "wb", quiet = TRUE), silent = TRUE)
+    # .af_urls() (R/data.R) resolves the current model version from the
+    # AlphaFold API rather than hardcoding one, which has already drifted once.
+    suppressWarnings(try(
+      utils::download.file(.af_urls(uniprot)$pdb, dest, mode = "wb", quiet = TRUE),
+      silent = TRUE))
   }
   dest
 }
@@ -284,6 +287,67 @@ plot_protein_plddt_gg <- function(uniprot = "P04637", residue = NULL) {
                                    linetype = "dashed", linewidth = 0.6)
   }
   gg_data_uri(p1, width = 900, height = 560)
+}
+
+# ---- AlphaFold predicted aligned error (PAE) ------------------------------
+# Same binned matrix the React engine gets, on the same LTC ramp with the same
+# limits, so the two renderings are the same picture in two engines.
+plot_pae_gg <- function(uniprot = "P04637", residue = NULL) {
+  pae <- biov_pae(uniprot)
+  if (is.null(pae)) {
+    return(gg_data_uri(ggplot2::ggplot() +
+      ggplot2::annotate("text", 0, 0, label = paste("Could not fetch PAE for", uniprot),
+                        colour = "#233038") + ggplot2::theme_void()))
+  }
+  m <- pae$matrix
+  pos <- as.integer(pae$rowLabels)
+  # as.numeric() unrolls column-major, so the row index cycles fastest.
+  long <- data.frame(
+    scored  = rep(pos, each = nrow(m)),
+    aligned = rep(pos, times = ncol(m)),
+    pae     = as.numeric(m))
+  p1 <- ggplot2::ggplot(long, ggplot2::aes(x = scored, y = aligned, fill = pae)) +
+    ggplot2::geom_raster() +
+    ggplot2::scale_fill_gradientn(colours = biov_gradient(), name = "PAE (Å)",
+                                  limits = c(0, pae$maxPae)) +
+    ggplot2::scale_y_reverse(expand = c(0, 0)) +
+    ggplot2::scale_x_continuous(expand = c(0, 0)) +
+    ggplot2::coord_equal() +
+    ggplot2::labs(x = "scored residue", y = "aligned residue",
+                  title = paste("AlphaFold PAE", uniprot)) +
+    biov_theme(base_size = 12)
+  if (!is.null(residue) && !is.na(residue)) {
+    p1 <- p1 +
+      ggplot2::geom_vline(xintercept = residue, colour = "#C63F3E",
+                          linetype = "dashed", linewidth = 0.4) +
+      ggplot2::geom_hline(yintercept = residue, colour = "#C63F3E",
+                          linetype = "dashed", linewidth = 0.4)
+  }
+  gg_data_uri(p1, width = 700, height = 680)
+}
+
+# One row of the PAE matrix: how well the rest of the chain is placed relative
+# to the selected residue. The React twin of the N-d array's pixel spectrum.
+plot_pae_profile_gg <- function(uniprot = "P04637", residue = NULL) {
+  pae <- biov_pae(uniprot)
+  if (is.null(pae)) {
+    return(gg_data_uri(ggplot2::ggplot() + ggplot2::theme_void(),
+                       width = 640, height = 300))
+  }
+  pos <- as.integer(pae$rowLabels)
+  res <- if (is.null(residue) || is.na(residue)) pos[1] else residue
+  i <- which.min(abs(pos - res))
+  df <- data.frame(residue = pos, pae = pae$matrix[i, ])
+  p1 <- ggplot2::ggplot(df, ggplot2::aes(x = residue, y = pae)) +
+    ggplot2::geom_area(fill = "#8BC8CB", alpha = 0.55) +
+    ggplot2::geom_line(colour = "#0E7175", linewidth = 0.5) +
+    ggplot2::geom_vline(xintercept = pos[i], colour = "#C63F3E",
+                        linetype = "dashed", linewidth = 0.4) +
+    ggplot2::ylim(0, pae$maxPae) +
+    ggplot2::labs(x = "residue", y = "PAE (Å)",
+                  title = sprintf("aligned on residue %d", pos[i])) +
+    biov_theme(base_size = 12)
+  gg_data_uri(p1, width = 640, height = 300)
 }
 
 # ---- Manhattan plot (GWAS) ------------------------------------------------
