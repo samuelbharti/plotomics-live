@@ -89,6 +89,18 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Kaplan-Meier survival",
+    what: "Overall survival for 1,067 TCGA breast tumours with usable follow-up, stratified by tumour stage, PAM50 subtype, age band, or whether one of the twelve most-altered drivers is hit. Censoring ticks, a 95% band, medians, the log-rank test and the number-at-risk table.",
+    react: "plotomics km: step curves and the confidence band on canvas, axes, risk table and legend as an SVG overlay. Hovering reads off every stratum's estimate at that time.",
+    ggplot: "the steps are expanded into explicit vertices in R and drawn with geom_line plus a geom_ribbon band, because a ribbon has no step variant and would otherwise draw diagonal edges the estimator never asserts. The risk table is a second panel sharing the x scale via patchwork.",
+    data: "Same cBioPortal cohort as the oncoplot, so 'altered' on this page means exactly what that page shows. Estimation happens once server-side with the survival package: Kaplan-Meier curves, Greenwood confidence limits, at-risk counts and the log-rank p, all shipped to both engines so the two cannot step in different places. Medians are the first time a curve reaches 50%, reported as 'not reached' when it never does rather than being replaced by the last follow-up time. Patients with missing or non-positive follow-up are dropped, which is why the count is 1,067 rather than the full 1,080. The gene strata are worth reading honestly: TP53 alteration is not prognostic for overall survival in this cohort (p = 0.66), which is the sort of null result a gallery figure usually hides.",
+    refs: [
+      { label: "Kaplan & Meier, J Am Stat Assoc 53:457–481 (1958) - nonparametric estimation from incomplete observations", href: "https://doi.org/10.1080/01621459.1958.10501452" },
+      { label: "Therneau & Grambsch (2000) - Modeling Survival Data, the survival package", href: "https://doi.org/10.1007/978-1-4757-3294-8" },
+      { label: "Cerami et al., Cancer Discov 2:401–404 (2012) - the cBioPortal", href: "https://doi.org/10.1158/2159-8290.CD-12-0095" },
+    ],
+  },
+  {
     title: "Xenium single-molecule transcripts",
     what: "One million individual mRNA detections at their micrometre coordinates in a human breast cancer section, drawn from the 42.6 million the run reported. Colour by curated marker class, by the twelve most abundant genes, or by whether the molecule fell inside a nucleus.",
     react: "plotomics embedding, the same WebGL scatter the UMAP page uses, here on real tissue coordinates rather than an abstract embedding. Coordinates and category codes are fetched as binary blobs over plain HTTP, never over the websocket. The category order and palette are passed explicitly so a class keeps its colour when you switch fields.",
@@ -234,7 +246,7 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across twenty-one common biological visualizations.
+            compare the two approaches across twenty-two common biological visualizations.
             All datasets are public; each is described and referenced below.
           </p>
         </div>

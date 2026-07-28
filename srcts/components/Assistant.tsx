@@ -40,6 +40,10 @@ const KB: Viz[] = [
     what: "capture spots at their tissue coordinates over the H&E section, coloured by cluster or by a gene.",
     capacity: "thousands of spots here; the canvas layer handles tens of thousands, and Visium HD bins would go the same way.",
     pick: "your measurements have real coordinates on a tissue section and the anatomy is part of the result." },
+  { route: "/survival", name: "Kaplan-Meier survival", kw: ["survival", "kaplan", "meier", "kaplan-meier", "km", "censoring", "censored", "time to event", "time-to-event", "prognosis", "prognostic", "outcome", "hazard", "log-rank", "logrank", "at risk", "cox", "os", "pfs", "overall survival", "clinical", "follow-up"],
+    what: "overall survival curves per stratum with censoring ticks, a 95% band and the number-at-risk table.",
+    capacity: "any cohort size; the curve is a step function over event times, so the point count follows deaths not patients.",
+    pick: "you have follow-up time plus an event indicator and want to compare outcome between groups." },
   { route: "/xenium", name: "Xenium single-molecule transcripts", kw: ["xenium", "merfish", "cosmx", "single molecule", "single-molecule", "smfish", "in situ", "imaging-based", "transcript", "molecule", "subcellular", "spatial", "detection", "probe", "segmentation-free"],
     what: "individual mRNA detections at their micrometre coordinates in a tissue section, coloured by marker class, gene, or nuclear position.",
     capacity: "a million molecules on the GPU here, out of 42.6M in the run; the limit is transfer size, not the renderer.",
@@ -101,7 +105,7 @@ const KB: Viz[] = [
 type Msg = { role: "user" | "bot"; text: string; recs?: string[] };
 
 const INTRO =
-  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the twenty-one visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
+  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the twenty-two visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
 
 function findViz(q: string): Viz[] {
   const s = q.toLowerCase();
@@ -143,7 +147,7 @@ function answer(q: string): Msg {
   // about / what is this
   if (/(what is|about|who|why|explain the app|purpose|how does this work|engine|ggplot|shiny react|two ways)/.test(s)) {
     return { role: "bot", text:
-      "Plotomics Live shows twenty-one common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
+      "Plotomics Live shows twenty-two common biological visualizations, each rendered two ways: a classic ggplot2 image (server-side R) and an interactive Shiny React (TSX / WebGL) component. The point is to compare the traditional and modern approaches on the same data - the React engine stays interactive on very large datasets (e.g. ~584k cells) where a static plot can't. All datasets are public and referenced on the About page." };
   }
 
   // specific visualization info
@@ -154,7 +158,7 @@ function answer(q: string): Msg {
   }
 
   return { role: "bot", text:
-    "I can help with what this app is, any of the twenty-one visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
+    "I can help with what this app is, any of the twenty-two visualizations, how much each can render, or which to pick for your data. Try asking e.g. \"I have single-cell data, what should I use?\" or \"how many points can the UMAP show?\"" };
 }
 
 const CHIPS = [

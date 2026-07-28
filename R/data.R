@@ -849,3 +849,155 @@ biov_pae <- local({
     out
   }
 })
+
+# ---- overall survival (Kaplan-Meier) --------------------------------------
+# The same TCGA-BRCA cohort the oncoplot reads, now with its follow-up. All the
+# estimation happens here, once: survival probabilities, Greenwood bands,
+# censoring times, at-risk counts, medians and the log-rank test. Both engines
+# get the same numbers, so the curves cannot step in different places.
+
+# Strata for the gene view come from the alteration table the oncoplot uses, so
+# "altered" means exactly what that page shows it to mean.
+biov_survival_genes <- local({
+  cache <- NULL
+  function(n = 12L) {
+    if (is.null(cache)) {
+      a <- biov_brca_alterations()
+      cache <<- names(sort(table(a$gene), decreasing = TRUE))
+    }
+    utils::head(cache, n)
+  }
+})
+
+.survival_strata <- function(group_by, gene) {
+  cl <- biov_brca_clinical()
+  keep <- !is.na(cl$os_months) & !is.na(cl$os_event) & cl$os_months > 0
+  cl <- cl[keep, , drop = FALSE]
+
+  if (identical(group_by, "gene")) {
+    altered <- unique(biov_brca_alterations()$sample[
+      biov_brca_alterations()$gene == gene])
+    lab <- ifelse(cl$sample %in% altered,
+                  sprintf("%s altered", gene),
+                  sprintf("%s wild-type", gene))
+    levs <- c(sprintf("%s altered", gene), sprintf("%s wild-type", gene))
+    # Altered in the warning red, wild-type in the calm teal.
+    cols <- c("#C63F3E", "#0E7175")
+  } else if (identical(group_by, "age")) {
+    # Conventional TCGA cut points rather than a median split, which would move
+    # with the cohort and make the strata mean something different each time.
+    lab <- cut(cl$age, breaks = c(-Inf, 50, 65, Inf),
+               labels = c("under 50", "50 to 64", "65 and over"))
+    lab <- as.character(lab)
+    levs <- c("under 50", "50 to 64", "65 and over")
+    cols <- biov_categorical(3)
+  } else if (identical(group_by, "stage")) {
+    lab <- cl$stage
+    levs <- c("I", "II", "III", "IV")
+    cols <- c("#0E7175", "#708C69", "#E4A25B", "#C63F3E")
+  } else {
+    lab <- cl$subtype
+    levs <- c("LumA", "LumB", "Her2", "Basal", "Normal")
+    cols <- biov_categorical(5)
+  }
+
+  ok <- !is.na(lab) & lab %in% levs
+  levs_present <- levs[levs %in% unique(lab[ok])]
+  list(df = data.frame(time = cl$os_months[ok], event = cl$os_event[ok],
+                       group = factor(lab[ok], levels = levs_present),
+                       stringsAsFactors = FALSE),
+       levels = levs_present,
+       colors = cols[match(levs_present, levs)])
+}
+
+biov_survival <- local({
+  cache <- new.env(parent = emptyenv())
+  function(group_by = "subtype", gene = "TP53") {
+    key <- paste(group_by, gene, sep = "|")
+    hit <- cache[[key]]
+    if (!is.null(hit)) return(hit)
+
+    if (!requireNamespace("survival", quietly = TRUE)) {
+      stop("the survival package is required for the Kaplan-Meier page")
+    }
+    s <- .survival_strata(group_by, gene)
+    d <- s$df
+    fit <- survival::survfit(survival::Surv(time, event) ~ group, data = d)
+
+    n <- length(fit$time)
+    grp <- if (is.null(fit$strata)) rep(s$levels[1], n) else
+      rep(sub("^[^=]*=", "", names(fit$strata)), times = as.integer(fit$strata))
+
+    # survfit does not store the origin, and without it every curve would begin
+    # partway down its first drop.
+    starts <- data.frame(time = 0, surv = 1, lower = 1, upper = 1,
+                         group = s$levels, stringsAsFactors = FALSE)
+    curves <- rbind(starts, data.frame(
+      time = as.numeric(fit$time), surv = as.numeric(fit$surv),
+      lower = as.numeric(fit$lower), upper = as.numeric(fit$upper),
+      group = grp, stringsAsFactors = FALSE))
+    curves$group <- factor(curves$group, levels = s$levels)
+    curves <- curves[order(curves$group, curves$time), , drop = FALSE]
+    # survfit's CI is NA until the first event; carry the origin's 1 forward so
+    # the band has somewhere to start.
+    curves$lower[is.na(curves$lower)] <- 1
+    curves$upper[is.na(curves$upper)] <- 1
+
+    cens <- fit$n.censor > 0
+    censor <- data.frame(time = as.numeric(fit$time[cens]),
+                         surv = as.numeric(fit$surv[cens]),
+                         group = grp[cens], stringsAsFactors = FALSE)
+
+    # A round grid the axis can also use as its ticks.
+    tmax <- max(d$time)
+    risk_times <- seq(0, floor(tmax / 60) * 60, by = 60)
+    if (length(risk_times) < 2) risk_times <- c(0, round(tmax))
+    risk <- t(vapply(s$levels, function(g) {
+      i <- which(grp == g)
+      tt <- fit$time[i]; nr <- fit$n.risk[i]
+      vapply(risk_times, function(t) {
+        j <- which(tt >= t)
+        if (length(j) == 0L) 0L else as.integer(nr[j[1]])
+      }, integer(1))
+    }, integer(length(risk_times))))
+
+    # Median survival per stratum: the first time the curve reaches 0.5. NA
+    # when it never does, which is the honest answer, not "not reached yet".
+    medians <- vapply(s$levels, function(g) {
+      i <- which(curves$group == g)
+      j <- which(curves$surv[i] <= 0.5)
+      if (length(j) == 0L) NA_real_ else curves$time[i][j[1]]
+    }, numeric(1))
+
+    p <- NA_real_
+    if (length(s$levels) > 1) {
+      sd <- survival::survdiff(survival::Surv(time, event) ~ group, data = d)
+      p <- stats::pchisq(sd$chisq, df = length(sd$n) - 1, lower.tail = FALSE)
+    }
+
+    out <- list(
+      time = curves$time, surv = curves$surv,
+      lower = curves$lower, upper = curves$upper,
+      group = as.character(curves$group),
+      censorTime = censor$time, censorSurv = censor$surv,
+      censorGroup = censor$group,
+      levels = s$levels, colors = s$colors,
+      riskTimes = risk_times,
+      riskCounts = as.integer(t(risk)),   # row-major, groups x times
+      medians = unname(medians),
+      counts = unname(as.integer(table(d$group))),
+      events = unname(as.integer(tapply(d$event, d$group, sum))),
+      n = nrow(d), nEvents = sum(d$event == 1),
+      p = p, pLabel = .p_label(p),
+      groupBy = group_by, gene = gene
+    )
+    cache[[key]] <- out
+    out
+  }
+})
+
+.p_label <- function(p) {
+  if (is.na(p)) return("")
+  if (p < 0.001) return("log-rank p < 0.001")
+  sprintf("log-rank p = %s", format(round(p, 3), nsmall = 3))
+}

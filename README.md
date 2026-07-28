@@ -1,6 +1,6 @@
 # Plotomics Live — biological visualizations, two ways
 
-A Shiny **React** (TSX) app that shows twenty-one biological-data visualizations, each
+A Shiny **React** (TSX) app that shows twenty-two biological-data visualizations, each
 rendered **two ways** so you can compare them side by side via an engine toggle:
 
 - **Shiny React** — an interactive, GPU-accelerated TSX component (plotomics /
@@ -26,6 +26,7 @@ always visualize the *same* server-side computation.
 | Tahoe-100M perturbation | drug×cell-line coverage clustermap **+ a 380k-cell cell-cycle scatter** (real Tahoe data) | ggplot2 `geom_tile` |
 | Visium spatial transcriptomics | plotomics `spatial` (H&E underlay + canvas spots, one shared transform) | ggplot2 `annotation_raster` + `geom_point` |
 | Xenium single-molecule transcripts | plotomics `embedding` (WebGL, 1M mRNA detections streamed as binary blobs) | ggplot2 `geom_point` on a 40k subsample |
+| Kaplan-Meier survival | plotomics `km` (canvas step curves + Greenwood band + risk table) | ggplot2 `geom_line` on expanded steps + `patchwork` risk table |
 | Gene network | plotomics `network` (sigma/WebGL, ~1.5k nodes / 7.4k edges) | igraph layout + ggplot2 |
 | Genome browser (IGV) | igv.js (hg19 + variant track) | ggplot2 variant needle plot |
 | Protein structure | 3Dmol.js (AlphaFold, coloured by pLDDT) | ggplot2 per-residue pLDDT profile |
@@ -107,8 +108,8 @@ image tiles served statically, not a live in-app renderer.
 
 ## Future visualizations (available in sibling projects, easy to add)
 
-PCA/MDS scatter, Kaplan–Meier survival, box/violin group comparison, single-cell
-dotplot, and enrichment lollipop.
+PCA/MDS scatter, box/violin group comparison, single-cell dotplot, and
+enrichment lollipop.
 
 ## License
 

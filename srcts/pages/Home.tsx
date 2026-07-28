@@ -20,6 +20,9 @@ export const VIZ: CardDef[] = [
   { to: "/visium", key: "visium", title: "Visium spatial transcriptomics",
     desc: "3,798 real capture spots on a breast cancer section, drawn over the H&E they came from. Colour by cluster or by any gene in the panel.",
     engines: ["react", "ggplot"] },
+  { to: "/survival", key: "survival", title: "Kaplan-Meier survival",
+    desc: "Overall survival for 1,067 real TCGA breast tumours, stratified by stage, subtype, age or driver alteration, with the number-at-risk table.",
+    engines: ["react", "ggplot"] },
   { to: "/xenium", key: "xenium", title: "Xenium single-molecule transcripts",
     desc: "One million individual mRNA molecules at their real position in a breast cancer section, out of the 42.6M the run detected. WebGL draws them all; ggplot2 subsamples.",
     engines: ["react", "ggplot"] },
@@ -82,7 +85,7 @@ export default function Home() {
       <div className="hero">
         <h1><span className="accent">Plotomics</span> Live</h1>
         <p>
-          Plotomics, made interactive. Twenty visualizations of real biological datasets,
+          Plotomics, made interactive. Twenty-two visualizations of real biological datasets,
           each rendered two ways - a classic <b>ggplot2</b> image and an interactive
           <b> Shiny&nbsp;React</b> (TSX) component powered by plotomics / WebGL. Pick a
           visualization, then flip the engine toggle to compare. The headline is the
