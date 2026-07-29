@@ -17,14 +17,14 @@ that looks real and is not should say so.
 | `expression.csv` | DESeq2 VST expression, genes x 40 samples (20 tumour, 20 normal) | same | same |
 | `metadata.csv` | sample to group (tumour / normal) | same | same |
 | `mutations.csv` | Recurrent BRCA somatic variants: `chrom, pos, ref, alt, gene, protein_change, count` (hg19) | TCGA-BRCA PanCancer Atlas via the cBioPortal REST API. cBioPortal content is ODbL; the underlying TCGA data are open-access | same |
-| `brca_oncoplot.csv`, `brca_clinical.csv`, `brca_lollipop.csv` | Alteration matrix (gene x sample x class), clinical annotation, and per-residue variant counts for 967 tumours | cBioPortal REST API, study `brca_tcga_pan_can_atlas_2018`. ODbL over open-access TCGA | `Rscript data/prep/prepare-brca-cohort.R` |
+| `brca_oncoplot.csv`, `brca_clinical.csv`, `brca_lollipop.csv` | Alteration matrix (gene x sample x class) for the 967-tumour altered-driver oncoplot; clinical annotation for the full 1,080-tumour cohort (the survival page uses the 1,067 with usable follow-up); per-residue variant counts | cBioPortal REST API, study `brca_tcga_pan_can_atlas_2018`. ODbL over open-access TCGA | `Rscript data/prep/prepare-brca-cohort.R` |
 | `protein_domains.csv`, `protein_ptm.csv` | Pfam domain architecture and modified residues for six BRCA drivers | InterPro (EMBL-EBI, CC0) and UniProtKB (CC BY 4.0) REST APIs | `Rscript data/prep/prepare-protein-tracks.R` |
 | `sbs96_catalogue.csv`, `sbs96_signatures.csv`, `sbs96_exposures.csv` | Observed 96-context SNV catalogue, four signatures extracted de novo from it by NMF, and per-sample exposures | GDC open-access TCGA-BRCA MAFs. The trinucleotide context comes from the MAF's own `CONTEXT` column, so no reference genome is needed | `Rscript data/prep/prepare-sbs96.R` |
 | `visium_spots.csv`, `visium_expr.csv`, `www/spatial/visium_he.png` | 3,798 capture spots with coordinates and graph-based cluster, a 72-gene marker panel as log1p CP10K, and the low-res H&E | 10x Genomics, Human Breast Cancer (Block A Section 1), Visium v1.1.0. CC BY 4.0 | `Rscript data/prep/prepare-visium.R` |
 | `xenium_ggplot_sample.csv`, `www/data/xenium_*.{i16,json}` | 1,000,000 single-molecule transcript detections as binary blobs, plus a 40k CSV subsample for the ggplot2 side | 10x Genomics, Xenium In Situ Human Breast Cancer Rep 1, Analyzer 1.0.1. CC BY 4.0 | `Rscript data/prep/prepare-xenium.R` |
 | `www/data/umap_*.{f32,i16,json}`, `umap_ggplot_sample.csv` | 584,207-cell UMAP embedding as binary blobs, plus a 40k CSV subsample | UCSC Cell Browser, Human Cell Landscape (Han et al. 2020, GSE134355). Public release; see the study for terms | `Rscript data/prep/prepare-umap.R` |
 | `tahoe_perturbation.csv` | Drug x cell-line coverage matrix (cells profiled) | Tahoe-100M `obs_cell_grid` (Vevo Therapeutics / Arc Institute), aggregated with duckdb. CC BY 4.0 | `Rscript data/prep/prepare-tahoe.R <path-to-parquet>` |
-| `www/data/tahoe_*.{f32,i16,json}` | 400,000-cell QC and cell-cycle sample as binary blobs | Tahoe-100M `obs_metadata`, same source and license | `Rscript data/prep/prepare-tahoe-cells.R <path-to-parquet>` |
+| `www/data/tahoe_*.{f32,i16,json}` | 380,078-cell QC and cell-cycle sample as binary blobs | Tahoe-100M `obs_metadata`, same source and license | `Rscript data/prep/prepare-tahoe-cells.R <path-to-parquet>` |
 
 The two Tahoe scripts read a parquet that is far too large to vendor (2.3 GB for
 `obs_metadata`). Give the path as the first argument, or set `TAHOE_CELL_GRID` /
@@ -54,6 +54,7 @@ per visualization.
 | Single-cell ATAC coverage | pseudobulk accessibility, shared promoters plus cluster-specific enhancers | 31 |
 | eQTL matrix | variant x gene effect sizes with a planted cis band | 21 |
 | N-dimensional array | a 100 x 100 x 24 hyperspectral cube, Gaussian features each lighting a different channel. Written once to `www/data/ndarray.f32` by `prepare-ndarray.R` | 41 |
+| Gosling genome view | GWAS-style points defined inline in the Gosling JSON spec (no file, no R generation) | none |
 
 ## Binary blob format
 
