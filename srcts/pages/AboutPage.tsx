@@ -1,3 +1,5 @@
+import { GROUPS, type GroupId } from "./Home";
+
 interface Entry {
   title: string;
   what: string;
@@ -6,6 +8,36 @@ interface Entry {
   data: string;
   refs: { label: string; href: string }[];
 }
+
+// Which analysis-area category each About entry belongs to, keyed by title, so
+// the reference cards read in the same five groups as the nav and home page.
+const GROUP_OF: Record<string, GroupId> = {
+  "Single-cell UMAP": "singlecell",
+  "Tahoe-100M drug perturbation": "singlecell",
+  "Visium spatial transcriptomics": "singlecell",
+  "Xenium single-molecule transcripts": "singlecell",
+  "Marker gene dot plot": "singlecell",
+  "Stacked violin": "singlecell",
+  "Volcano plot": "expression",
+  "Clustered heatmap & Expression heatmap": "expression",
+  "PCA explorer": "expression",
+  "Oncoplot (OncoPrint)": "cancer",
+  "Domain lollipop": "cancer",
+  "Mutation treemap": "cancer",
+  "Mutational signatures (SBS96)": "cancer",
+  "Driver co-occurrence (UpSet)": "cancer",
+  "Kaplan-Meier survival": "cancer",
+  "Manhattan + QQ (GWAS)": "genome",
+  "eQTL / pQTL effect map": "genome",
+  "Genome browser (IGV)": "genome",
+  "Gosling genome view": "genome",
+  "Hi-C contact matrix": "genome",
+  "Single-cell ATAC coverage": "genome",
+  "Protein structure": "structure",
+  "AlphaFold PAE matrix": "structure",
+  "Gene network": "structure",
+  "N-dimensional array viewer": "structure",
+};
 
 const ENTRIES: Entry[] = [
   {
@@ -22,9 +54,9 @@ const ENTRIES: Entry[] = [
   },
   {
     title: "Tahoe-100M drug perturbation",
-    what: "A drug × cell-line coverage matrix - how many cells were profiled for each drug/cell-line combination (log10), hierarchically clustered.",
-    react: "plotomics clustermap / heatmap (WebGL) with in-browser clustering and dendrograms.",
-    ggplot: "geom_tile of the same matrix.",
+    what: "Two views of a ~100-million-cell drug-perturbation atlas: a drug × cell-line coverage matrix (how many cells were profiled per combination, log10, hierarchically clustered) and a 380,078-cell cell-cycle scatter sampled from the atlas.",
+    react: "plotomics clustermap / heatmap (WebGL) with in-browser clustering and dendrograms for the coverage matrix, plus a plotomics embedding (WebGL) drawing the 380k-cell cell-cycle scatter on the GPU.",
+    ggplot: "geom_tile of the coverage matrix, and a geom_point scatter for the cell-cycle sample.",
     data: "Tahoe-100M - a ~100-million-cell single-cell drug-perturbation atlas (Vevo Therapeutics / Arc Institute), 379 drugs across 50 cancer cell lines. The coverage matrix is aggregated from the pre-computed obs_cell_grid via duckdb.",
     refs: [
       { label: "Tahoe-100M dataset (Arc Institute)", href: "https://arcinstitute.org/tools/virtualcellatlas" },
@@ -217,11 +249,21 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
-    title: "Volcano plot & Mutation treemap",
-    what: "The volcano shows differential expression (log2 fold-change vs −log10 p) for 16,087 genes; the treemap shows the BRCA mutation landscape as a gene → variant hierarchy sized by recurrence.",
-    react: "plotomics volcano and treemap (WebGL / D3).",
-    ggplot: "ggplot2 + ggrepel (volcano) and a hand-rolled slice-and-dice treemap (geom_rect).",
-    data: "TCGA-BRCA differential-expression results and recurrent somatic variants (same sources as above).",
+    title: "Volcano plot",
+    what: "Differential expression as a volcano: log2 fold-change vs −log10 p for 16,087 genes, tumour vs normal breast, with significant genes labelled.",
+    react: "plotomics volcano (WebGL / D3).",
+    ggplot: "ggplot2 + ggrepel.",
+    data: "TCGA-BRCA differential-expression results (recount3 counts analysed with DESeq2, tumour vs normal; same source as the heatmaps).",
+    refs: [
+      { label: "The Cancer Genome Atlas (TCGA-BRCA)", href: "https://www.cancer.gov/tcga" },
+    ],
+  },
+  {
+    title: "Mutation treemap",
+    what: "The BRCA mutation landscape as a gene → variant hierarchy: each gene block is subdivided into its recurrent protein-change variants and sized by recurrence.",
+    react: "plotomics treemap (WebGL / D3).",
+    ggplot: "a hand-rolled slice-and-dice treemap (geom_rect).",
+    data: "Recurrent BRCA somatic variants from the cBioPortal TCGA-BRCA fetch (same source as the oncoplot and IGV pages).",
     refs: [
       { label: "The Cancer Genome Atlas (TCGA-BRCA)", href: "https://www.cancer.gov/tcga" },
     ],
@@ -291,30 +333,36 @@ export default function AboutPage() {
           <p className="page__sub">
             Plotomics Live pairs a classic <b>ggplot2</b> rendering with an interactive
             <b> Shiny&nbsp;React</b> (TSX / WebGL) rendering of the same data, so you can
-            compare the two approaches across twenty-six common biological visualizations.
-            All datasets are public; each is described and referenced below.
+            compare the two approaches across twenty-six common biological visualizations,
+            grouped into five analysis areas. All datasets are public; each is described
+            and referenced below.
           </p>
         </div>
       </div>
 
-      <div className="about">
-        {ENTRIES.map((e) => (
-          <section className="about__card" key={e.title}>
-            <h3>{e.title}</h3>
-            <p>{e.what}</p>
-            <div className="about__grid">
-              <div><span className="about__k">Shiny React</span> {e.react}</div>
-              <div><span className="about__k">ggplot2</span> {e.ggplot}</div>
-              <div><span className="about__k">Data</span> {e.data}</div>
-            </div>
-            <ul className="about__refs">
-              {e.refs.map((r) => (
-                <li key={r.href}><a href={r.href} target="_blank" rel="noreferrer">{r.label} ↗</a></li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
+      {GROUPS.map((g) => (
+        <section className="section" key={g.id}>
+          <h2 className="section__title">{g.label}</h2>
+          <div className="about">
+            {ENTRIES.filter((e) => GROUP_OF[e.title] === g.id).map((e) => (
+              <section className="about__card" key={e.title}>
+                <h3>{e.title}</h3>
+                <p>{e.what}</p>
+                <div className="about__grid">
+                  <div><span className="about__k">Shiny React</span> {e.react}</div>
+                  <div><span className="about__k">ggplot2</span> {e.ggplot}</div>
+                  <div><span className="about__k">Data</span> {e.data}</div>
+                </div>
+                <ul className="about__refs">
+                  {e.refs.map((r) => (
+                    <li key={r.href}><a href={r.href} target="_blank" rel="noreferrer">{r.label} ↗</a></li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
