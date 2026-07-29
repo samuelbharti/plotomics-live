@@ -6,6 +6,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { GROUPS, vizByGroup } from "../pages/Home";
+import { useShinyInput, useShinyOutputValue } from "../lib/shiny";
 
 interface Viz {
   route: string; name: string; kw: string[];
@@ -119,7 +120,16 @@ const KB: Viz[] = [
     pick: "you want reproducible, spec-driven genome tracks rather than plotting code." },
 ];
 
-type Msg = { role: "user" | "bot"; text: string; recs?: string[] };
+type Msg = { role: "user" | "bot"; text: string; recs?: string[]; pending?: boolean };
+
+type Provider = "gemini" | "openai" | "anthropic";
+const PROVIDERS: { id: Provider; label: string }[] = [
+  { id: "gemini", label: "Google Gemini" },
+  { id: "openai", label: "OpenAI" },
+  { id: "anthropic", label: "Anthropic" },
+];
+interface ChatRequest { id: number; provider: Provider; key: string; model: string; message: string }
+interface ChatResponse { id: number; text?: string; error?: string }
 
 const INTRO =
   "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the twenty-six visualizations (grouped into five analysis areas), tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
@@ -199,13 +209,55 @@ export function Assistant() {
   const [msgs, setMsgs] = useState<Msg[]>([{ role: "bot", text: INTRO }]);
   const bodyRef = useRef<HTMLDivElement>(null);
 
+  // Bring-your-own-key settings. The key lives only in this component's state
+  // (and, per message, in the server session); it is never persisted.
+  const [showKey, setShowKey] = useState(false);
+  const [provider, setProvider] = useState<Provider>("gemini");
+  const [apiKey, setApiKey] = useState("");
+  const [model, setModel] = useState("");
+  const hasKey = apiKey.trim().length > 0;
+
+  // Server round-trip: send a request when a key is set, read the reply back.
+  // With no key we never call the server (the KB answers locally).
+  const [, setChatReq] = useShinyInput<ChatRequest | null>("chat_request", null, { priority: "event" });
+  const resp = useShinyOutputValue<ChatResponse | null>("chat_response", null);
+  const reqIdRef = useRef(0);
+  const pendingIdRef = useRef<number | null>(null);
+
   useEffect(() => { bodyRef.current?.scrollTo(0, bodyRef.current.scrollHeight); }, [msgs, open]);
+
+  // Splice the model's reply (or a friendly error) into the placeholder bubble.
+  useEffect(() => {
+    if (!resp || resp.id == null || resp.id !== pendingIdRef.current) return;
+    pendingIdRef.current = null;
+    setMsgs((m) => {
+      const next = m.slice();
+      for (let i = next.length - 1; i >= 0; i--) {
+        if (next[i].pending) {
+          next[i] = resp.error
+            ? { role: "bot", text: "⚠ " + resp.error }
+            : { role: "bot", text: resp.text || "(no reply)" };
+          break;
+        }
+      }
+      return next;
+    });
+  }, [resp]);
 
   const send = (text: string) => {
     const q = text.trim();
     if (!q) return;
-    setMsgs((m) => [...m, { role: "user", text: q }, answer(q)]);
     setInput("");
+    if (hasKey) {
+      // Real LLM: show a thinking placeholder, hand the turn to the server.
+      const id = ++reqIdRef.current;
+      pendingIdRef.current = id;
+      setMsgs((m) => [...m, { role: "user", text: q }, { role: "bot", text: "Thinking…", pending: true }]);
+      setChatReq({ id, provider, key: apiKey.trim(), model: model.trim(), message: q });
+    } else {
+      // Offline: answer from the built-in knowledge base.
+      setMsgs((m) => [...m, { role: "user", text: q }, answer(q)]);
+    }
   };
 
   return (
@@ -225,11 +277,47 @@ export function Assistant() {
       <div className={"assistant-panel" + (open ? " open" : "")} role="dialog" aria-label="Plotomics Live guide">
         <div className="assistant-head">
           <span className="assistant-title">🧬 Plotomics Live guide</span>
+          <button className={"assistant-key" + (hasKey ? " on" : "")} onClick={() => setShowKey((s) => !s)}
+            aria-label="Model and API key" aria-expanded={showKey}
+            title={hasKey ? `Connected: ${provider}` : "Connect a model (bring your own key)"}>
+            {hasKey ? "🔑" : "🔓"}
+          </button>
           <button className="assistant-close" onClick={() => setOpen(false)} aria-label="Close">✕</button>
         </div>
+        {showKey && (
+          <div className="assistant-settings">
+            <label>
+              <span>Provider</span>
+              <select value={provider} onChange={(e) => setProvider(e.target.value as Provider)}>
+                {PROVIDERS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>API key</span>
+              <input type="password" value={apiKey} autoComplete="off" spellCheck={false}
+                onChange={(e) => setApiKey(e.target.value)} placeholder="Paste your key (this session only)" />
+            </label>
+            <label>
+              <span>Model <em>(optional)</em></span>
+              <input type="text" value={model} autoComplete="off" spellCheck={false}
+                onChange={(e) => setModel(e.target.value)} placeholder="leave blank for the default" />
+            </label>
+            <p className="assistant-note">
+              {hasKey
+                ? "Connected. Your key stays in this browser session and is never stored."
+                : "With no key I answer from a built-in guide. Add a key to chat with a live model. Advice only - I never change the app."}
+            </p>
+            {hasKey && (
+              <button className="assistant-forget" onClick={() => { setApiKey(""); setModel(""); }}>
+                Forget key
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="assistant-body" ref={bodyRef}>
           {msgs.map((m, i) => (
-            <div key={i} className={"bubble " + m.role}>
+            <div key={i} className={"bubble " + m.role + (m.pending ? " pending" : "")}>
               {m.text.split("\n").map((line, j) => <div key={j}>{line || " "}</div>)}
               {m.recs && m.recs.length > 0 && (
                 <div className="bubble-recs">
@@ -247,7 +335,8 @@ export function Assistant() {
         </div>
         <form className="assistant-input" onSubmit={(e) => { e.preventDefault(); send(input); }}>
           <input value={input} onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about the app or your data…" aria-label="Message" />
+            placeholder={hasKey ? "Ask the model about the app or your data…" : "Ask about the app or your data…"}
+            aria-label="Message" />
           <button type="submit" aria-label="Send">Send</button>
         </form>
       </div>
