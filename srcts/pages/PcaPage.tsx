@@ -64,6 +64,12 @@ export default function PcaPage() {
     // nothing at all.
     pointScaleMode: "constant" as const,
     showAxes: true, showLegend: true, padding: 0.12,
+    // Both axes are in the same units and their relative spread is the claim.
+    // fitUnitCoords divides both by one factor, so it keeps the true ratio, but
+    // the default "fill" would then stretch each axis to the canvas and undo
+    // that, drawing a 4% component as though it were worth as much as a 34%
+    // one. Matches coord_fixed on the ggplot side.
+    aspect: "equal" as const,
     xLabel: stats?.xLabel ?? "", yLabel: stats?.yLabel ?? "",
     theme: THEME,
   }), [pointSize, stats?.xLabel, stats?.yLabel]);
