@@ -5,6 +5,7 @@
 // external LLM / API key), so it always works offline.
 import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { GROUPS, vizByGroup } from "../pages/Home";
 
 interface Viz {
   route: string; name: string; kw: string[];
@@ -121,7 +122,7 @@ const KB: Viz[] = [
 type Msg = { role: "user" | "bot"; text: string; recs?: string[] };
 
 const INTRO =
-  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the twenty-six visualizations, tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
+  "Hi! I'm the Plotomics Live guide 🧬 I can explain the app, describe any of the twenty-six visualizations (grouped into five analysis areas), tell you roughly how much each can render, and help you pick one for your dataset. Try a suggestion below, or tell me about your data.";
 
 function findViz(q: string): Viz[] {
   const s = q.toLowerCase();
@@ -134,6 +135,13 @@ function findViz(q: string): Viz[] {
 function answer(q: string): Msg {
   const s = q.toLowerCase().trim();
   if (!s) return { role: "bot", text: INTRO };
+
+  // category / grouping questions
+  if (/categor|grouping|analysis area|(?:what|which|list|show|how many).*\bgroup/.test(s)) {
+    const lines = GROUPS.map((g) => `• ${g.label}: ${vizByGroup(g.id).map((v) => v.title).join(", ")}`);
+    return { role: "bot", text:
+      `The visualizations are grouped into five analysis areas:\n${lines.join("\n")}\n\nEach is a dropdown in the top nav, and the home page lays the cards out under the same headers.` };
+  }
 
   // capacity / size questions
   if (/(how many|how large|how big|capacity|maximum|max |scale|points|render|performance|fast|slow)/.test(s)) {
@@ -179,9 +187,9 @@ function answer(q: string): Msg {
 
 const CHIPS = [
   "What is Plotomics Live?",
+  "What categories are there?",
   "I have single-cell data - what should I use?",
   "How many points can the UMAP render?",
-  "I have differential expression results",
   "Which view for a protein structure?",
 ];
 
