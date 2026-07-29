@@ -1,8 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import { HashRouter, Routes, Route, NavLink, useLocation } from "react-router-dom";
 import { useShinyInitialized } from "./lib/shiny";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Assistant } from "./components/Assistant";
-import Home, { VIZ } from "./pages/Home";
+import Home, { GROUPS, vizByGroup, type GroupId } from "./pages/Home";
 import VolcanoPage from "./pages/VolcanoPage";
 import UmapPage from "./pages/UmapPage";
 import HeatmapPage from "./pages/HeatmapPage";
@@ -32,18 +33,62 @@ import GoslingPage from "./pages/GoslingPage";
 import AboutPage from "./pages/AboutPage";
 
 function Nav() {
+  const location = useLocation();
+  // Which category dropdown is open (null = none). One at a time.
+  const [open, setOpen] = useState<GroupId | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  // Close on navigation.
+  useEffect(() => { setOpen(null); }, [location.pathname]);
+
+  // Close on outside click or Escape (only while a menu is open).
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) setOpen(null);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <nav className="nav">
+    <nav className="nav" ref={navRef}>
       <NavLink to="/" className="nav__brand">
         <span className="dot" /> Plotomics&nbsp;Live
       </NavLink>
       <div className="nav__links">
-        {VIZ.map((v) => (
-          <NavLink key={v.to} to={v.to}
-            className={({ isActive }) => "nav__link" + (isActive ? " active" : "")}>
-            {v.title.split(" ")[0]}
-          </NavLink>
-        ))}
+        {GROUPS.map((g) => {
+          const items = vizByGroup(g.id);
+          const groupActive = items.some((v) => v.to === location.pathname);
+          const isOpen = open === g.id;
+          return (
+            <div className="nav__group" key={g.id}
+              onMouseEnter={() => setOpen(g.id)}
+              onMouseLeave={() => setOpen((cur) => (cur === g.id ? null : cur))}>
+              <button type="button"
+                className={"nav__link nav__grouptrig" + (groupActive ? " active" : "")}
+                aria-haspopup="true" aria-expanded={isOpen}
+                onClick={() => setOpen((cur) => (cur === g.id ? null : g.id))}>
+                {g.label}<span className="nav__caret" aria-hidden="true">▾</span>
+              </button>
+              {isOpen && (
+                <div className="nav__menu" role="menu">
+                  {items.map((v) => (
+                    <NavLink key={v.to} to={v.to} role="menuitem"
+                      className={({ isActive }) => "nav__menuitem" + (isActive ? " active" : "")}>
+                      {v.title}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
         <NavLink to="/about"
           className={({ isActive }) => "nav__link" + (isActive ? " active" : "")}>
           About
