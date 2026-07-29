@@ -4,6 +4,7 @@ import { createProfile } from "@plotomics/components/profile";
 import type { PlotomicsData } from "@plotomics/core";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
+import { fitUnitCoords } from "../lib/coords";
 import { THEME } from "../lib/theme";
 import { PageShell, EngineToggle, GgplotImage, Skeleton, type Engine } from "../components/ui";
 
@@ -29,7 +30,10 @@ const VIEWS: { key: View; label: string }[] = [
 ];
 
 export default function PcaPage() {
-  const [engine, setEngine] = useState<Engine>("react");
+  // A 40-sample scatter reads best as the classic plot (points, labels,
+  // confidence ellipses); the WebGL engine is built for 100k+ point clouds.
+  // Default to ggplot here and keep the React engine one click away.
+  const [engine, setEngine] = useState<Engine>("ggplot");
   const [view, setView] = useShinyInput<View>("pca_view", "scores");
   const [pcX, setPcX] = useShinyInput<number>("pca_x", 1);
   const [pcY, setPcY] = useShinyInput<number>("pca_y", 2);
@@ -44,19 +48,22 @@ export default function PcaPage() {
   const pngStatus = useShinyOutputStatus("pca_png");
   const stats = useShinyOutputValue<PcaStats | undefined>("pca_stats", undefined);
 
+  const scoreData = useMemo<PlotomicsData | null>(() => {
+    const cx = data?.columns?.x, cy = data?.columns?.y;
+    if (!cx || !cy) return null;
+    const { x, y } = fitUnitCoords(cx, cy);
+    return { columns: { ...data!.columns, x, y } } as unknown as PlotomicsData;
+  }, [data]);
+
   const scoreOptions = useMemo(() => ({
     // A cohort of tens wants far bigger points than the 584k the default is
     // tuned for, and how big is a matter of taste, so it is a control.
     pointSize, opacity: 0.85, colorMode: "categorical" as const,
-    // Literal pixels. Under the zoom-scaled default, a plot whose data range is
+    // Literal pixels. Under the zoom-scaled default a plot whose data range is
     // nowhere near unit size floors every point at one pixel and pointSize does
     // nothing at all.
     pointScaleMode: "constant" as const,
     showAxes: true, showLegend: true, padding: 0.12,
-    // Both axes are in the same units and their relative spread is the point.
-    // Stretching each to fill would draw a 4% component as though it were
-    // worth as much as a 34% one.
-    aspect: "equal" as const,
     xLabel: stats?.xLabel ?? "", yLabel: stats?.yLabel ?? "",
     theme: THEME,
   }), [pointSize, stats?.xLabel, stats?.yLabel]);
@@ -135,8 +142,9 @@ export default function PcaPage() {
     // The scores view is a scatter, the other two are bar profiles, so the
     // factory swaps with the view rather than one component faking both.
     return view === "scores"
-      ? <PlotomicsView factory={createEmbedding}
-          data={data as unknown as PlotomicsData} options={scoreOptions} />
+      ? (scoreData
+          ? <PlotomicsView factory={createEmbedding} data={scoreData} options={scoreOptions} />
+          : <Skeleton label="Decomposing…" />)
       : <PlotomicsView factory={createProfile}
           data={data as unknown as PlotomicsData} options={profileOptions} />;
   };

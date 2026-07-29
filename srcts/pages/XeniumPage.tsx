@@ -3,6 +3,7 @@ import { createEmbedding } from "@plotomics/components/embedding";
 import type { PlotomicsData } from "@plotomics/core";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
+import { fitUnitCoords } from "../lib/coords";
 import { THEME } from "../lib/theme";
 import { PageShell, EngineToggle, GgplotImage, Skeleton, type Engine } from "../components/ui";
 
@@ -93,7 +94,10 @@ export default function XeniumPage() {
     const n = codes.length;
     const color = new Array<string>(n);
     for (let i = 0; i < n; i++) color[i] = levels[codes[i]] ?? "Other";
-    return { columns: { x: data.x, y: data.y, color, label: color } };
+    // Micrometre coordinates span ~7500; scale to unit-ish range so the fitted
+    // camera does not zoom out past where points collapse. See lib/coords.
+    const { x, y } = fitUnitCoords(data.x, data.y);
+    return { columns: { x, y, color, label: color } };
   }, [data, field, colorBy]);
 
   // The level order and the palette both come from the sidecar the prep script
@@ -102,6 +106,8 @@ export default function XeniumPage() {
   // to carry, so the two engines cannot disagree about what red means.
   const options = useMemo(() => ({
     pointSize: 1.4,
+    // Literal pixels regardless of zoom, so molecules stay visible.
+    pointScaleMode: "constant",
     opacity: 0.55,
     colorMode: "categorical",
     categories: field?.levels ?? null,
