@@ -57,6 +57,30 @@ a { color: var(--accent-ink); text-decoration: none; }
 .nav__link:hover { background: var(--surface-2); color: var(--fg); }
 .nav__link.active { background: var(--accent); color: #fff; }
 
+/* category dropdown menus */
+.nav__group { position: relative; display: inline-flex; }
+.nav__grouptrig {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: none; border: none; margin: 0; cursor: pointer;
+  font-family: inherit; font-size: 0.9rem;
+}
+.nav__caret { font-size: 0.62rem; opacity: 0.75; transition: transform 0.15s; }
+.nav__grouptrig[aria-expanded="true"] .nav__caret { transform: rotate(180deg); }
+.nav__menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+  min-width: 232px; padding: 0.4rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 0.1rem;
+}
+.nav__menuitem {
+  padding: 0.42rem 0.6rem; border-radius: 8px; color: var(--fg);
+  font-size: 0.88rem; white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+.nav__menuitem:hover { background: var(--surface-2); }
+.nav__menuitem.active { background: var(--accent); color: #fff; }
+
 .main { flex: 1; padding: 1.75rem 1.5rem; max-width: 1300px; width: 100%; margin: 0 auto; }
 
 /* ---- home ---- */
@@ -64,6 +88,14 @@ a { color: var(--accent-ink); text-decoration: none; }
 .hero h1 { font-family: var(--serif); font-size: 2.3rem; margin: 0 0 0.5rem; letter-spacing: -0.02em; }
 .hero .accent { color: var(--accent); }
 .hero p { color: var(--muted); max-width: 64ch; line-height: 1.6; margin: 0; font-size: 1.02rem; }
+
+.section { margin: 2rem 0; }
+.section:first-of-type { margin-top: 1rem; }
+.section__title {
+  font-family: var(--serif); font-weight: 600; font-size: 1.25rem;
+  margin: 0 0 0.9rem; padding-bottom: 0.4rem; color: var(--fg);
+  border-bottom: 1px solid var(--border); letter-spacing: -0.01em;
+}
 
 .cards { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }
 .card {
