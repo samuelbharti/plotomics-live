@@ -74,7 +74,12 @@ show a static subsample - the contrast is the point.
 Every visualization panel has a **full-screen** button, and a floating **advisory
 chat assistant** (bottom-right) answers questions about the app, each
 visualization, roughly how much each can render, and which to pick for a given
-dataset (deterministic knowledge base - no API key, advice-only, no UI control).
+dataset. It is **bring-your-own-key**: paste a Gemini, OpenAI, or Anthropic key
+in the assistant's key panel to chat with a live model (via
+[`ellmer`](https://ellmer.tidyverse.org)); with no key it falls back to a
+built-in deterministic guide, so it still works offline. The key is kept in the
+session only and never stored, and the assistant is advice-only (no tools, so it
+cannot control the app).
 
 ## Architecture
 

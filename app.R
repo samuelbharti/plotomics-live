@@ -15,6 +15,7 @@ library(ggplot2)
 source("R/palettes.R", local = TRUE)
 source("R/data.R", local = TRUE)
 source("R/plots.R", local = TRUE)
+source("R/chat.R", local = TRUE)
 
 ui <- page_react_html("www/index.html")
 
@@ -471,6 +472,75 @@ server <- function(input, output, session) {
          cells = p$residues * p$residues, maxPae = p$maxPae,
          mean = round(mean(p$matrix), 2))
   })
+
+  # ---- CHAT ASSISTANT (bring-your-own-key, advisory only) ------------------
+  # The React chat box sends a request { id, provider, key, model, message }
+  # when a key is set; we build a per-session ellmer client (rebuilt when the
+  # provider/key/model change), call it, and publish { id, text | error }. With
+  # no key the React side answers from its own knowledge base and never calls
+  # here. The client and key live only in this session's memory.
+  chat_state <- new.env(parent = emptyenv())
+  chat_state$client <- NULL
+  chat_state$provider <- NULL
+  chat_state$model <- NULL
+  chat_state$key <- NULL
+  chat_state$turns <- 0L
+  chat_reply <- reactiveVal(NULL)
+
+  observeEvent(input$chat_request, {
+    reqd <- input$chat_request
+    if (is.null(reqd) || is.null(reqd$id)) return()
+    id <- reqd$id
+    fail <- function(text) chat_reply(list(id = id, error = text))
+    msg <- reqd$message %||% ""
+    if (!nzchar(trimws(msg))) return()
+
+    if (!requireNamespace("ellmer", quietly = TRUE)) {
+      return(fail("The chat backend (ellmer) is not installed on this server."))
+    }
+    provider <- reqd$provider %||% "gemini"
+    if (!provider %in% BIOV_CHAT_PROVIDERS) provider <- "gemini"
+    model <- trimws(reqd$model %||% "")
+    key <- trimws(reqd$key %||% "")
+    if (!nzchar(key)) key <- biov_chat_env_key(provider)
+    if (!nzchar(key)) {
+      return(fail("No API key set. Paste a provider key to chat with the model."))
+    }
+
+    # (Re)build the client when the provider, key or model changes; a new client
+    # starts a fresh conversation, so the turn counter resets with it.
+    if (!identical(provider, chat_state$provider) ||
+        !identical(model, chat_state$model) ||
+        !identical(key, chat_state$key) ||
+        is.null(chat_state$client)) {
+      cl <- tryCatch(biov_chat_build(provider, key, model), error = function(e) e)
+      if (inherits(cl, "condition")) {
+        return(fail(biov_chat_friendly_error(conditionMessage(cl), key)))
+      }
+      chat_state$client <- cl
+      chat_state$provider <- provider
+      chat_state$model <- model
+      chat_state$key <- key
+      chat_state$turns <- 0L
+    }
+
+    if (chat_state$turns >= 25L) {
+      return(fail("Turn limit reached for this session. Reload the page to start a new conversation."))
+    }
+    chat_state$turns <- chat_state$turns + 1L
+
+    reply <- tryCatch(
+      as.character(chat_state$client$chat(msg, echo = "none")),
+      error = function(e) structure("", condition = conditionMessage(e))
+    )
+    cond <- attr(reply, "condition")
+    if (!is.null(cond)) {
+      return(fail(biov_chat_friendly_error(cond, key)))
+    }
+    chat_reply(list(id = id, text = paste(reply, collapse = "\n")))
+  })
+
+  output$chat_response <- reactive_output({ chat_reply() })
 }
 
 shinyApp(ui = ui, server = server)
