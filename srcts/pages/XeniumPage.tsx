@@ -114,6 +114,10 @@ export default function XeniumPage() {
     showAxes: false,
     showLegend: true,
     padding: 0.03,
+    // x and y are micrometres on the slide, so one unit must be one unit in
+    // either direction. Stretching to fill would distort the section's real
+    // geometry. Matches coord_fixed on the ggplot side.
+    aspect: "equal",
     theme: { ...THEME, categorical: field?.colors ?? THEME.categorical },
   }), [field]);
 
