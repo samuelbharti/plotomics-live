@@ -1,0 +1,10 @@
+# Optional operator-funded chat keys. The chat assistant works without any
+# of these: it is bring-your-own-key, and a user can paste a key directly
+# into the assistant's key panel instead. Set one of these only if you want
+# every user of a deployment to share one key.
+#
+# Copy this file to .Renviron and fill in real values. Never commit .Renviron.
+# GEMINI_API_KEY=
+# GOOGLE_API_KEY=
+# OPENAI_API_KEY=
+# ANTHROPIC_API_KEY=
