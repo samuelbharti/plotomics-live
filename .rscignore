@@ -1,0 +1,40 @@
+# Files excluded from the deployment bundle (Posit Connect / Connect Cloud).
+#
+# rsconnect does NOT honour .gitignore, so anything that must not leave this
+# machine has to be listed HERE as well. Being git-ignored is not enough.
+
+# Secrets. Without these two lines a local deploy would upload the live
+# GEMINI_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY inside the bundle. The
+# chat is bring-your-own-key by default; set these only if you want operator-
+# funded chat, and do it in the Connect Cloud dashboard instead.
+.Renviron
+.Renviron.example
+
+# Cached fetches (AlphaFold PAE) are excluded by data/.rscignore, NOT from
+# here. rsconnect reads .rscignore from each directory as it scans it, so
+# entries in this file only ever apply to root-level names. A nested path
+# like "data/raw" silently does nothing. See data/.rscignore.
+
+# Frontend build sources and tooling. Only the built www/app.js ships; the
+# Shiny process never runs npm or reads srcts/.
+srcts
+node_modules
+package.json
+package-lock.json
+.npmrc
+tsconfig.json
+vite.config.ts
+
+# Development-only trees and version control.
+.github
+.git
+.claude
+
+# Repo furniture the running app does not need.
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+CITATION.cff
+.gitattributes
+.gitignore
+.markdownlint.json
+.markdownlintignore

@@ -1,0 +1,19 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+title: "Plotomics Live"
+version: "0.1.0"
+date-released: "2026-08-14"
+authors:
+  - family-names: Bharti
+    given-names: Samuel
+keywords:
+  - r
+  - shiny
+  - react
+  - webgl
+  - bioinformatics
+  - data-visualization
+  - genomics
+license: MIT
+type: software
+abstract: "A Shiny React app that shows twenty-six biological-data visualizations, each rendered two ways (an interactive WebGL component and a classic ggplot2 image), so the two approaches can be compared side by side."
