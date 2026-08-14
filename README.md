@@ -1,15 +1,16 @@
 # Plotomics Live - biological visualizations, two ways
 
-A Shiny **React** (TSX) app that shows twenty-six biological-data visualizations, each
-rendered **two ways** so you can compare them side by side via an engine toggle:
+Plotomics Live is a Shiny **React** (TSX) app. It shows twenty-six
+biological-data visualizations, each rendered **two ways**. With the engine
+toggle, you can compare the two renderings side by side:
 
 - **Shiny React** - an interactive, GPU-accelerated TSX component (plotomics /
   WebGL, sigma, igv.js, 3Dmol.js), and
 - **ggplot2 (classic)** - a server-rendered image (the traditional R path).
 
-The whole UI is React; there is **no bslib / Bootstrap**. ggplot2 plots are
-rendered server-side to base64 PNGs and shown in `<img>`, so the two engines
-always visualize the *same* server-side computation.
+The whole UI is React. It has no bslib or Bootstrap component. The server
+renders ggplot2 plots as base64 PNGs and shows them in an `<img>` element. As
+a result, both engines always show the same server-side computation.
 
 ## The visualizations
 
@@ -67,19 +68,24 @@ drives the category dropdown nav and the home page).
 | Gene network | plotomics `network` (sigma/WebGL, ~1.5k nodes / 7.4k edges) | igraph layout + ggplot2 |
 | N-dimensional array viewer | plotomics `heatmap` slice + channel slider + per-pixel spectrum (WebGL) | ggplot2 `geom_raster` + spectrum |
 
-The **UMAP** is the headline: ~584k real cells arrive as ~7 MB of binary column
-blobs over plain HTTP and render on the GPU instantly, while ggplot2 can only
-show a static subsample - the contrast is the point.
+The **UMAP** view is the headline feature. About 584,000 real cells arrive as
+about 7 MB of binary column blobs over plain HTTP, and the GPU renders them
+instantly. ggplot2 can show only a static subsample. This contrast is the
+point.
 
-Every visualization panel has a **full-screen** button, and a floating **advisory
-chat assistant** (bottom-right) answers questions about the app, each
-visualization, roughly how much each can render, and which to pick for a given
-dataset. It is **bring-your-own-key**: paste a Gemini, OpenAI, or Anthropic key
-in the assistant's key panel to chat with a live model (via
-[`ellmer`](https://ellmer.tidyverse.org)); with no key it falls back to a
-built-in deterministic guide, so it still works offline. The key is kept in the
-session only and never stored, and the assistant is advice-only (no tools, so it
-cannot control the app).
+Every visualization panel has a **full-screen** button. A floating **advisory
+chat assistant** sits in the bottom-right corner. It answers questions about
+the app, about each visualization, and about which visualization fits a given
+dataset. It also gives a rough sense of how much data each visualization can
+render.
+
+The chat assistant is **bring-your-own-key**. Paste a Gemini, OpenAI, or
+Anthropic key into the assistant's key panel to chat with a live model,
+through [`ellmer`](https://ellmer.tidyverse.org). With no key, the assistant
+falls back to a built-in guide, so the app still works offline. The key stays
+in server memory for the life of the session. The app never stores it on
+disk. The assistant is advice-only: it has no tools, so it cannot control the
+app.
 
 ## Architecture
 
@@ -88,18 +94,19 @@ cannot control the app).
   visualization (both the plotomics data contract *and* a ggplot2 PNG). The
   React client reads them via `useShinyOutputValue` off `window.shinyreact`.
 - **Frontend:** TSX built with Vite (IIFE, React externalized to
-  `window.shinyreact`). React Router `HashRouter`; one route per viz. The
-  visualizations are grouped into five analysis-area categories (single-cell &
-  spatial, gene expression, cancer genomics, genome & epigenome, structure &
-  networks): the top nav is a dropdown menu per category and the home page lays
-  the cards out under the same headers. Theme is a light, organic palette
-  derived from the [LTC color palettes](https://github.com/loukesio/ltc-color-palettes).
+  `window.shinyreact`). React Router uses a `HashRouter`, with one route per
+  visualization. The visualizations are grouped into five analysis-area
+  categories: single-cell and spatial, gene expression, cancer genomics,
+  genome and epigenome, and structure and networks. The top nav shows one
+  dropdown menu per category, and the home page lays out the cards under the
+  same headings. The theme is a light, organic palette derived from the
+  [LTC color palettes](https://github.com/loukesio/ltc-color-palettes).
 - **Reuse:** the [plotomics](../visualization-components) headless component
   factories (wrapped with one thin `PlotomicsView` lifecycle component),
   ggplot2 renderers adapted from `lifescience-shiny-gallery`, and a Tahoe
   coverage matrix prepared from `tahoe-explorer` via duckdb.
 
-```
+```text
 app.R                server: reactive_output feeds + ggplot2->PNG
 R/{data,plots,palettes}.R   shiny-free data + rendering layer
 data/                bundled CSVs + data/prep/ refresh scripts (+ PROVENANCE.md)
@@ -119,35 +126,42 @@ R -e "shiny::runApp('.', port = 8000)"
 # open http://127.0.0.1:8000
 ```
 
-Refresh / regenerate data with the scripts in `data/prep/` (see
-`data/prep/PROVENANCE.md`). The UMAP blobs and Tahoe matrix are committed so the
-app runs offline out of the box.
+To refresh or regenerate the data, run the scripts in `data/prep/` (see
+`data/prep/PROVENANCE.md`). The repository already includes the UMAP blobs
+and the Tahoe matrix, so the app runs offline by default.
 
 ## Notes / known limits
 
-- WebGL views need a hardware-accelerated browser; the software renderer used by
-  some headless setups mis-draws them. An error boundary keeps a failed view
-  from blanking the app.
-- The Hi-C React view uses the heatmap factory (a contact map *is* a heatmap);
-  the dedicated `hic` factory needs `OES_texture_float`, which current Chrome no
-  longer exposes.
-- The IGV browser streams its genome reference from igv.js's data servers, so it
-  needs open network access to those hosts.
+- WebGL views need a browser with hardware acceleration. The software
+  renderer in some headless setups draws these views incorrectly. An error
+  boundary keeps a failed view from blanking the whole app.
+- The Hi-C React view uses the heatmap factory, because a contact map is a
+  heatmap. The dedicated `hic` factory needs `OES_texture_float`, and current
+  Chrome no longer exposes that extension.
+- The IGV browser streams its genome reference from the igv.js data servers.
+  It needs open network access to those hosts.
 
 ## Large / high-dimensional data
 
-The N-dimensional array viewer demonstrates the microscopy/geoscience angle
-(zarr / xarray / HyperSpy) with a WebGL slice + spectrum, no Python. For datasets
-beyond WebGL's client-side limit (tens of millions to billions of points),
-[datashader](https://datashader.org) is the right tool but is Python-only and
-server-rasterizes; the clean way to use it here would be offline pre-rasterized
-image tiles served statically, not a live in-app renderer.
+The N-dimensional array viewer demonstrates the microscopy and geoscience use
+case (zarr, xarray, HyperSpy) with a WebGL slice and spectrum, and needs no
+Python. For datasets beyond the client-side limit of WebGL (tens of millions
+to billions of points), [datashader](https://datashader.org) is the right
+tool. However, datashader is Python-only and rasterizes on the server. The
+clean way to use it here is with offline, pre-rasterized image tiles served
+as static files, not a live in-app renderer.
 
 ## Future visualizations (easy to add)
 
 A GO / pathway enrichment plot and an MDS ordination.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup and the pull request
+checklist. This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
-The code is MIT (see `LICENSE`). The bundled datasets are not: each keeps the
-license of its source, listed per dataset in `data/prep/PROVENANCE.md`.
+The code is MIT (see `LICENSE`). The bundled datasets are not MIT-licensed.
+Each dataset keeps the license of its own source. See
+`data/prep/PROVENANCE.md` for the license of each dataset.
