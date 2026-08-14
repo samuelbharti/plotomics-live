@@ -130,6 +130,21 @@ To refresh or regenerate the data, run the scripts in `data/prep/` (see
 `data/prep/PROVENANCE.md`). The repository already includes the UMAP blobs
 and the Tahoe matrix, so the app runs offline by default.
 
+## Deployment
+
+The app deploys to Posit Connect or Connect Cloud as a plain Shiny app.
+`.rscignore` (plus `data/.rscignore`) keeps the frontend build sources,
+repo-health files, and any local cache out of the deployment bundle; only
+`app.R`, `R/`, `data/` (without `data/raw/`), and the built `www/` ship.
+
+`manifest.json` is a snapshot of the R package versions the app needs, and it
+goes out of date as dependencies change. Rebuild it with `npm run build`
+first, so `www/app.js` is current, then run:
+
+```bash
+R -e "rsconnect::writeManifest(appDir = '.')"
+```
+
 ## Notes / known limits
 
 - WebGL views need a browser with hardware acceleration. The software

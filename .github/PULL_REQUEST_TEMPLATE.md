@@ -18,6 +18,7 @@
 - [ ] `npx tsc` reports no type errors.
 - [ ] README / docs updated if behavior changed.
 - [ ] If a dataset changed, `data/prep/PROVENANCE.md` is updated to match.
+- [ ] If an R package dependency changed, `manifest.json` is regenerated.
 
 ## Notes for reviewers
 

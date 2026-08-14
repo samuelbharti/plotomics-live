@@ -52,3 +52,5 @@ open a pull request.
 - [ ] New or changed code follows the project structure above.
 - [ ] README / docs updated if behavior changed.
 - [ ] If a dataset changed, `data/prep/PROVENANCE.md` is updated to match.
+- [ ] If an R package dependency changed, `manifest.json` is regenerated
+      (see "Deployment" in the README).
