@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createIgv } from "@plotomics/components/igv";
+import { createIgv } from "plotomics/igv";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { PageShell, EngineToggle, GgplotImage, Skeleton, type Engine } from "../components/ui";

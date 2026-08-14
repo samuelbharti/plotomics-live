@@ -9,8 +9,7 @@
     "dev": "vite build --watch"
   },
   "dependencies": {
-    "@plotomics/components": "file:../visualization-components/packages/components",
-    "@plotomics/core": "file:../visualization-components/packages/core",
+    "plotomics": "^0.2.0",
     "3dmol": "^2.4.0",
     "graphology": "^0.26.0",
     "graphology-layout-forceatlas2": "^0.10.1",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { createEmbedding } from "@plotomics/components/embedding";
-import type { PlotomicsData } from "@plotomics/core";
+import { createEmbedding } from "plotomics/embedding";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { THEME } from "../lib/theme";

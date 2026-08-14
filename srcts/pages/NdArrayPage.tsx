@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { createHeatmap } from "@plotomics/components/heatmap";
-import type { PlotomicsData } from "@plotomics/core";
+import { createHeatmap } from "plotomics/heatmap";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { SpectrumCanvas } from "../components/CanvasPlots";
