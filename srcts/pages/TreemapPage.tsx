@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { createTreemap } from "@plotomics/components/treemap";
-import type { PlotomicsData } from "@plotomics/core";
+import { createTreemap } from "plotomics/treemap";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { THEME } from "../lib/theme";

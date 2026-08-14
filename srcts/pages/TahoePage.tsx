@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { createHeatmap } from "@plotomics/components/heatmap";
-import { createClustermap } from "@plotomics/components/clustermap";
-import { createEmbedding } from "@plotomics/components/embedding";
-import type { PlotomicsData } from "@plotomics/core";
+import { createHeatmap } from "plotomics/heatmap";
+import { createClustermap } from "plotomics/clustermap";
+import { createEmbedding } from "plotomics/embedding";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { THEME } from "../lib/theme";

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { createDotplot } from "@plotomics/components/dotplot";
-import type { PlotomicsData } from "@plotomics/core";
+import { createDotplot } from "plotomics/dotplot";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { THEME } from "../lib/theme";

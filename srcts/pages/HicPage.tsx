@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 // A contact matrix is a heatmap; we use the heatmap factory (no float-texture
 // requirement) rather than the hic factory, which needs OES_texture_float that
 // current Chrome no longer exposes.
-import { createHeatmap } from "@plotomics/components/heatmap";
-import type { PlotomicsData } from "@plotomics/core";
+import { createHeatmap } from "plotomics/heatmap";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { THEME } from "../lib/theme";

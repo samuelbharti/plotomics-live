@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { createKm } from "@plotomics/components/km";
-import type { PlotomicsData } from "@plotomics/core";
+import { createKm } from "plotomics/km";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { THEME } from "../lib/theme";

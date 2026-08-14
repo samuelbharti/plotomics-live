@@ -7,7 +7,7 @@
 // same wrapper drives volcano / heatmap / treemap / embedding / igv. Pattern
 // adapted from plotomics' own examples/shiny-react-embedding/srcts/Embedding.tsx.
 import { useEffect, useRef } from "react";
-import type { PlotomicsData } from "@plotomics/core";
+import type { PlotomicsData } from "plotomics/core";
 
 export interface PlotomicsInstance {
   setData(data: PlotomicsData): void;

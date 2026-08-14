@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { createEmbedding } from "@plotomics/components/embedding";
-import { createProfile } from "@plotomics/components/profile";
-import type { PlotomicsData } from "@plotomics/core";
+import { createEmbedding } from "plotomics/embedding";
+import { createProfile } from "plotomics/profile";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { fitUnitCoords } from "../lib/coords";

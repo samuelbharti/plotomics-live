@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { createNetwork } from "@plotomics/components/network";
-import type { PlotomicsData } from "@plotomics/core";
+import { createNetwork } from "plotomics/network";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { THEME } from "../lib/theme";

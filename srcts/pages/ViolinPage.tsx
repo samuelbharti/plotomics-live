@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { createViolin } from "@plotomics/components/violin";
-import type { PlotomicsData } from "@plotomics/core";
+import { createViolin } from "plotomics/violin";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { THEME } from "../lib/theme";

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { createUpset } from "@plotomics/components/upset";
-import type { PlotomicsData } from "@plotomics/core";
+import { createUpset } from "plotomics/upset";
+import type { PlotomicsData } from "plotomics/core";
 import { useShinyInput, useShinyOutputValue, useShinyOutputStatus } from "../lib/shiny";
 import { PlotomicsView } from "../lib/plotomics";
 import { THEME } from "../lib/theme";
