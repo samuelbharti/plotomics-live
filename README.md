@@ -1,5 +1,7 @@
 # Plotomics Live - biological visualizations, two ways
 
+[![DOI](https://zenodo.org/badge/1314263316.svg)](https://doi.org/10.5281/zenodo.21936926)
+
 Plotomics Live is a Shiny **React** (TSX) app. It shows twenty-six
 biological-data visualizations, each rendered **two ways**. With the engine
 toggle, you can compare the two renderings side by side:

@@ -1,8 +1,15 @@
-cff-version: 1.1.0
+cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "Plotomics Live"
 version: "0.1.0"
 date-released: "2026-08-14"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.21936927"
+    description: "The version-specific DOI for v0.1.0."
+  - type: doi
+    value: "10.5281/zenodo.21936926"
+    description: "The concept DOI that always resolves to the latest version."
 authors:
   - family-names: Bharti
     given-names: Samuel
