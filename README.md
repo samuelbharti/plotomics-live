@@ -101,7 +101,7 @@ app.
   dropdown menu per category, and the home page lays out the cards under the
   same headings. The theme is a light, organic palette derived from the
   [LTC color palettes](https://github.com/loukesio/ltc-color-palettes).
-- **Reuse:** the [plotomics](../visualization-components) headless component
+- **Reuse:** the [plotomics](https://github.com/samuelbharti/plotomics) headless component
   factories (wrapped with one thin `PlotomicsView` lifecycle component),
   ggplot2 renderers adapted from `lifescience-shiny-gallery`, and a Tahoe
   coverage matrix prepared from `tahoe-explorer` via duckdb.
