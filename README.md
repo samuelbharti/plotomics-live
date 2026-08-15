@@ -1,6 +1,8 @@
 # Plotomics Live - biological visualizations, two ways
 
-[![DOI](https://zenodo.org/badge/1314263316.svg)](https://doi.org/10.5281/zenodo.21936926)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21936926-1682D4)](https://doi.org/10.5281/zenodo.21936926)
+
+By [Samuel Bharti](https://www.samuelbharti.com)
 
 Plotomics Live is a Shiny **React** (TSX) app. It shows twenty-six
 biological-data visualizations, each rendered **two ways**. With the engine
@@ -174,11 +176,34 @@ A GO / pathway enrichment plot and an MDS ordination.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup and the pull request
-checklist. This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+I maintain this on my own, and issues and pull requests are welcome. Read
+[CONTRIBUTING.md](CONTRIBUTING.md) first, and please follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+Found a security problem? Do not open a public issue. Email me instead, as
+[SECURITY.md](SECURITY.md) describes.
+
+## Author
+
+I am **Samuel Bharti**. I wrote this app and I maintain it on my own.
+
+- Email: <samuelbharti.io@gmail.com>
+- Web: [samuelbharti.com](https://www.samuelbharti.com)
+- ORCID: [0000-0003-4190-7058](https://orcid.org/0000-0003-4190-7058)
+- GitHub: [@samuelbharti](https://github.com/samuelbharti)
+
+## Citation
+
+Zenodo archives each release. The badge at the top of this file resolves to the
+latest version; to cite one specific version, use that version's DOI from the
+[Zenodo record](https://doi.org/10.5281/zenodo.21936926).
+[CITATION.cff](CITATION.cff) holds the full metadata.
 
 ## License
 
-The code is MIT (see `LICENSE`). The bundled datasets are not MIT-licensed.
-Each dataset keeps the license of its own source. See
-`data/prep/PROVENANCE.md` for the license of each dataset.
+The code is [MIT](LICENSE). Copyright (c) 2026 Samuel Bharti.
+
+The bundled datasets are **not** MIT-licensed. Each one keeps the license of
+its own source, and those terms travel with the data if you redistribute this
+repository. [DATA-LICENSES.md](DATA-LICENSES.md) summarizes them, and
+`data/prep/PROVENANCE.md` lists the license per dataset.
