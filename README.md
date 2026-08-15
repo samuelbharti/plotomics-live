@@ -185,7 +185,7 @@ Found a security problem? Do not open a public issue. Email me instead, as
 
 ## Author
 
-I am **Samuel Bharti**. I wrote this app and I maintain it on my own.
+Samuel Bharti, sole author and maintainer.
 
 - Email: <samuelbharti.io@gmail.com>
 - Web: [samuelbharti.com](https://www.samuelbharti.com)
