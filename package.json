@@ -1,7 +1,7 @@
 {
   "name": "plotomics-live",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Biological data visualizations, each shown two ways: classic ggplot2 and Shiny React (TSX).",
   "scripts": {

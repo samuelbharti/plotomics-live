@@ -6,14 +6,24 @@ numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-15
+
 ### Fixed
 
-- `manifest.json` recorded `htmltools` as my GitHub fork
+- `manifest.json` recorded `htmltools` as a personal fork
   (`samuelbharti/htmltools`, version 0.5.9.9000) instead of the CRAN release.
   That was a stray `renv::snapshot()` result, not a deliberate choice. It now
   records CRAN htmltools 0.5.9, like every other package in the manifest.
   `shinyreact` only uses `HTML()`, `htmlDependency()`, `tagList()` and `tags`,
   all of which the CRAN release exports.
+
+### Changed
+
+- Shortened the Code of Conduct and rewrote the contributing guide.
+- Added a security policy and a plain-text citation file.
+- `LICENSE` is now plain MIT so GitHub detects it; the dataset terms moved to
+  `DATA-LICENSES.md`, unchanged.
+- Swapped the Zenodo DOI badge for a shields.io badge, which GitHub can proxy.
 
 ## [0.1.0] - 2026-08-14
 
