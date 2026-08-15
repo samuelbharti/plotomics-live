@@ -6,6 +6,15 @@ numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `manifest.json` recorded `htmltools` as my GitHub fork
+  (`samuelbharti/htmltools`, version 0.5.9.9000) instead of the CRAN release.
+  That was a stray `renv::snapshot()` result, not a deliberate choice. It now
+  records CRAN htmltools 0.5.9, like every other package in the manifest.
+  `shinyreact` only uses `HTML()`, `htmlDependency()`, `tagList()` and `tags`,
+  all of which the CRAN release exports.
+
 ## [0.1.0] - 2026-08-14
 
 ### Added
