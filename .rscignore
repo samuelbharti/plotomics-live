@@ -34,6 +34,9 @@ vite.config.ts
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
 CITATION.cff
+CITATION.md
+SECURITY.md
+DATA-LICENSES.md
 .gitattributes
 .gitignore
 .markdownlint.json

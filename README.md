@@ -197,7 +197,8 @@ I am **Samuel Bharti**. I wrote this app and I maintain it on my own.
 Zenodo archives each release. The badge at the top of this file resolves to the
 latest version; to cite one specific version, use that version's DOI from the
 [Zenodo record](https://doi.org/10.5281/zenodo.21936926).
-[CITATION.cff](CITATION.cff) holds the full metadata.
+[CITATION.cff](CITATION.cff) holds the full metadata, and
+[CITATION.md](CITATION.md) gives a ready-made text and BibTeX entry.
 
 ## License
 
