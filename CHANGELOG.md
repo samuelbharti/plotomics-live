@@ -18,6 +18,12 @@ numbers follow [Semantic Versioning](https://semver.org/).
 - Reworded the enforcement line in the Code of Conduct.
 - Added Posit Software, PBC to the copyright notice, next to the author.
 
+### Fixed
+
+- `shinyreact` now requires `index.html` to be a full HTML document with a
+  placeholder meta tag. Updated the file and refreshed `manifest.json` to
+  match (posit-dev/shinyreact#269).
+
 ## [0.1.1] - 2026-08-15
 
 ### Fixed
