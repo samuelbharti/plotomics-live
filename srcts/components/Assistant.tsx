@@ -264,16 +264,22 @@ export function Assistant() {
     <>
       <button className={"assistant-fab" + (open ? " hidden" : "")} onClick={() => setOpen(true)}
         aria-label="Open the Plotomics Live guide">
-        <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="30" height="30" aria-hidden="true">
           <circle cx="24" cy="24" r="22" fill="url(#g)" />
           <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#0E7175" /><stop offset="1" stopColor="#ED773C" /></linearGradient></defs>
-          <circle cx="17" cy="21" r="3.4" fill="#fff" /><circle cx="31" cy="21" r="3.4" fill="#fff" />
-          <circle cx="17.8" cy="21.6" r="1.5" fill="#233038" /><circle cx="31.8" cy="21.6" r="1.5" fill="#233038" />
-          <path d="M16 30 q8 7 16 0" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+          <line x1="24" y1="10" x2="24" y2="14" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="24" cy="9" r="1.7" fill="#fff" />
+          <rect x="12" y="19" width="4" height="7" rx="2" fill="#fff" />
+          <rect x="32" y="19" width="4" height="7" rx="2" fill="#fff" />
+          <rect x="14" y="14" width="20" height="17" rx="6" fill="#fff" />
+          <circle cx="19.5" cy="22.5" r="2" fill="#0E7175" />
+          <circle cx="28.5" cy="22.5" r="2" fill="#0E7175" />
+          <rect x="19" y="26.5" width="10" height="2.4" rx="1.2" fill="#0E7175" />
         </svg>
       </button>
 
+      <div className={"assistant-sidebar" + (open ? " open" : "")} aria-hidden="true" />
       <div className={"assistant-panel" + (open ? " open" : "")} role="dialog" aria-label="Plotomics Live guide">
         <div className="assistant-head">
           <span className="assistant-title">🧬 Plotomics Live guide</span>

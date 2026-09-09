@@ -165,9 +165,11 @@ export default function App() {
     <HashRouter>
       <div className="app">
         <Nav />
-        <main className="main"><Shell /></main>
+        <div className="app-body">
+          <main className="main"><Shell /></main>
+          <Assistant />
+        </div>
         <Footer />
-        <Assistant />
       </div>
     </HashRouter>
   );
