@@ -6,6 +6,24 @@ numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-09
+
+### Changed
+
+- The chat guide's floating button now shows a small robot icon instead of a
+  face-like one.
+- The chat guide now opens as a sidebar that shrinks the page next to it,
+  instead of a panel that covers it.
+- Simplified the author line in the README.
+- Reworded the enforcement line in the Code of Conduct.
+- Added Posit Software, PBC to the copyright notice, next to the author.
+
+### Fixed
+
+- `shinyreact` now requires `index.html` to be a full HTML document with a
+  placeholder meta tag. Updated the file and refreshed `manifest.json` to
+  match (posit-dev/shinyreact#269).
+
 ## [0.1.1] - 2026-08-15
 
 ### Fixed
