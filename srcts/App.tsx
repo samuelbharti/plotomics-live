@@ -101,7 +101,7 @@ function Nav() {
 function Footer() {
   return (
     <footer className="footer">
-      <span>© {new Date().getFullYear()} <b>Samuel Bharti</b> · Released under the <a
+      <span>© {new Date().getFullYear()} <b>Samuel Bharti</b> and <b>Posit Software, PBC</b> · Released under the <a
         href="https://opensource.org/licenses/MIT" target="_blank" rel="noreferrer">MIT License</a></span>
       <span className="footer__sep">·</span>
       <span>Built with <a href="https://github.com/posit-dev/shinyreact" target="_blank" rel="noreferrer">shinyreact</a> + plotomics</span>
