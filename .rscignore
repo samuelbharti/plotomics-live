@@ -30,9 +30,14 @@ vite.config.ts
 .git
 .claude
 
+# The script that writes manifest.json. It is git-ignored, but it sits in the
+# working tree when the manifest is written, so it must be excluded here too.
+_writemanifest.R
+
 # Repo furniture the running app does not need.
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
+CHANGELOG.md
 CITATION.cff
 CITATION.md
 SECURITY.md

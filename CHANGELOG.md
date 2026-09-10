@@ -6,6 +6,14 @@ numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-10
+
+### Fixed
+
+- The deployment manifest no longer lists `CHANGELOG.md` and
+  `_writemanifest.R`. Both are now in `.rscignore`, so a deployment does not
+  look for them.
+
 ## [0.1.2] - 2026-09-10
 
 ### Added

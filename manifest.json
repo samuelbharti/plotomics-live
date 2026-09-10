@@ -3059,14 +3059,8 @@
     }
   },
   "files": {
-    "_writemanifest.R": {
-      "checksum": "e050747da555e6f8d5bad11701ff0f73"
-    },
     "app.R": {
       "checksum": "3b1fe9361d8bda7110f2eca2e85601e5"
-    },
-    "CHANGELOG.md": {
-      "checksum": "18b97106bda016ea47832b45bb8cf0ef"
     },
     "data/brca_clinical.csv": {
       "checksum": "90221828fccb21591ad514ac18bec76e"
