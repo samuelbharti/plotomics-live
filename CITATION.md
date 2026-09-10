@@ -4,7 +4,7 @@ Please cite this repository when using it in publications or derivative projects
 
 Recommended citation (APA):
 
-Bharti, S. (2026). *Plotomics Live* (version 0.1.3) [Software]. Zenodo. <https://doi.org/10.5281/zenodo.21936926>
+Bharti, S. (2026). *Plotomics Live* (version 0.1.4) [Software]. Zenodo. <https://doi.org/10.5281/zenodo.21936926>
 
 BibTeX:
 
@@ -12,7 +12,7 @@ BibTeX:
 @software{plotomics_live_2026,
   author  = {Bharti, Samuel},
   title   = {Plotomics Live},
-  version = {0.1.3},
+  version = {0.1.4},
   date    = {2026-09-10},
   doi     = {10.5281/zenodo.21936926},
   url     = {https://doi.org/10.5281/zenodo.21936926}
