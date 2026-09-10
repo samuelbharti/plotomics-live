@@ -6,7 +6,13 @@ numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.1.2] - 2026-09-09
+## [0.1.2] - 2026-09-10
+
+### Added
+
+- A demo clip at `assets/demo.mp4`, for the Demo button in the bioinformatics
+  gallery. `assets` is in `.rscignore`, so the clip stays out of the manifest
+  and out of a deployment.
 
 ### Changed
 
