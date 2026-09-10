@@ -5,6 +5,12 @@ version: "0.1.3"
 date-released: "2026-09-10"
 identifiers:
   - type: doi
+    value: "10.5281/zenodo.22685133"
+    description: "The version-specific DOI for v0.1.3."
+  - type: doi
+    value: "10.5281/zenodo.22685125"
+    description: "The version-specific DOI for v0.1.2."
+  - type: doi
     value: "10.5281/zenodo.21950647"
     description: "The version-specific DOI for v0.1.1."
   - type: doi
