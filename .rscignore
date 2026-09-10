@@ -41,3 +41,6 @@ DATA-LICENSES.md
 .gitignore
 .markdownlint.json
 .markdownlintignore
+
+# The demo clip for the gallery. The site serves it; the app does not.
+assets
